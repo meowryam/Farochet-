@@ -1,7 +1,3 @@
-// Prisma 7 schema - Bootstrap baseline only.
-// Business models must be added later from approved contracts and reviewed
-// supporting artifacts (plan.md section 7, item 7). Do not invent the full business schema here.
-
 generator client {
   provider               = "prisma-client"
   output                 = "../src/generated/prisma"
@@ -13,4 +9,19 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+}
+
+model Product {
+  id          String   @id @default(uuid()) @db.Uuid
+  name        String
+  description String?
+  category    String?
+  images      String[] @default([])
+  basePrice   Int
+  // The positive-price CHECK is enforced by the initial SQL migration.
+  isArchived  Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([isArchived, createdAt])
 }

@@ -29,3 +29,154 @@
 .bootstrap-list li + li {
   margin-top: var(--space-2);
 }
+
+.catalogue-admin-layout {
+  display: grid;
+  gap: var(--space-6);
+}
+
+.catalogue-session-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: var(--space-4);
+}
+
+.catalogue-product-form {
+  display: grid;
+  gap: var(--space-6);
+}
+
+.catalogue-info-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+
+.catalogue-form-wide,
+.catalogue-form-actions {
+  grid-column: 1 / -1;
+}
+
+.catalogue-form-actions,
+.catalogue-row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+.catalogue-header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.catalogue-table-wrap {
+  overflow-x: auto;
+}
+
+.catalogue-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.catalogue-table th,
+.catalogue-table td {
+  padding: var(--space-3);
+  border-bottom: 1px solid var(--color-border);
+  vertical-align: middle;
+}
+
+.catalogue-table th {
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.catalogue-product-summary {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 220px;
+}
+
+.catalogue-product-summary strong {
+  color: var(--color-cocoa);
+}
+
+.catalogue-product-summary p {
+  max-width: 360px;
+  margin: var(--space-1) 0 0;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+}
+
+.catalogue-product-image {
+  width: 56px;
+  height: 56px;
+  flex: 0 0 56px;
+  border-radius: var(--radius-control);
+  object-fit: cover;
+  background: var(--color-lilac-mist);
+}
+
+.catalogue-product-image--empty {
+  display: grid;
+  place-items: center;
+  color: var(--color-text-secondary);
+  font-size: 11px;
+}
+
+.catalogue-record-badge {
+  display: inline-flex;
+  padding: 4px 10px;
+  border-radius: var(--radius-pill);
+  color: var(--status-success-text);
+  background: var(--status-success-bg);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.catalogue-record-badge.is-archived {
+  color: var(--status-info-text);
+  background: var(--status-info-bg);
+}
+
+.catalogue-state {
+  margin: 0;
+  color: var(--color-text-secondary);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (max-width: 640px) {
+  .catalogue-session-form,
+  .catalogue-info-fields {
+    grid-template-columns: 1fr;
+  }
+
+  .catalogue-info-fields > .catalogue-form-wide,
+  .catalogue-form-actions {
+    grid-column: 1;
+  }
+
+  .catalogue-form-actions {
+    justify-content: stretch;
+  }
+
+  .catalogue-form-actions .faro-button {
+    flex: 1;
+  }
+}

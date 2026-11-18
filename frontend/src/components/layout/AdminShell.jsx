@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import AdminSidebar from "./AdminSidebar";
 import AdminTopbar from "./AdminTopbar";
 
-export default function AdminShell({ activeKey, children, topbarProps, navItems }) {
+export default function AdminShell({ activeKey, children, topbarProps, navItems, logoutHref }) {
   const [menuOpen, setMenuOpen] = useState(false);
 
   return (
@@ -18,6 +18,7 @@ export default function AdminShell({ activeKey, children, topbarProps, navItems 
       <AdminSidebar
         activeKey={activeKey}
         navItems={navItems}
+        logoutHref={logoutHref}
         open={menuOpen}
         onNavigate={() => setMenuOpen(false)}
       />

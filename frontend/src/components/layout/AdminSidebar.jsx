@@ -27,7 +27,11 @@ export default function AdminSidebar({ activeKey, navItems = ADMIN_NAV_ITEMS, lo
           </a>
         ))}
       </nav>
-      <a href={logoutHref} onClick={onNavigate} style={{ color: "inherit", marginTop: "auto", fontSize: 14 }}>Log out</a>
+      {logoutHref && (
+        <a href={logoutHref} onClick={onNavigate} style={{ color: "inherit", marginTop: "auto", fontSize: 14 }}>
+          Log out
+        </a>
+      )}
     </aside>
   );
 }

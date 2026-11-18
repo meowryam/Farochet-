@@ -1,0 +1,16 @@
+[
+  {
+    "name": "Handcrafted Silk Ensemble",
+    "description": "Custom-tailored festive wear",
+    "category": "Apparel",
+    "images": ["/images/prd_001.jpg"],
+    "basePrice": 15000
+  },
+  {
+    "name": "Embroidered Velvet Shawl",
+    "description": "Hand-stitched winter shawl with intricate threadwork",
+    "category": "Accessories",
+    "images": ["/images/prd_002.jpg"],
+    "basePrice": 8500
+  }
+]

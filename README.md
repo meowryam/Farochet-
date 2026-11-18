@@ -1,6 +1,6 @@
 # Raazia — Customer Inquiry, Quotation, and Custom Order Management System
 
-D4 starter pack for the project group. This repository contains the approved product/architecture context, AI-agent instructions, implementation plan, ADRs, supporting references, Farochet UI Kit, and evidence templates. A Bootstrap scaffold for `frontend/` and `backend/` is present in the working tree; business feature slices remain unimplemented.
+D4 project workspace containing the approved product/architecture context, AI-agent instructions, implementation plan, ADRs, supporting references, Farochet UI Kit, and evidence templates. The Bootstrap scaffold and the Cycle 1 Product Catalogue Administration slice are present.
 
 ## Project objective
 
@@ -50,11 +50,12 @@ The Bootstrap foundation is present in the working tree (not yet committed):
 
 - `frontend/`: React 19 + Vite + JavaScript/JSX + React Router, with the Farochet UI Kit components, layouts, tokens and styles integrated under `frontend/src/`.
 - `backend/`: Express 5 REST API with Presentation, exactly nine Business Logic module folders, and a centralized Data Access/Repository layer.
-- Prisma 7 configuration, schema baseline and centralized Prisma Client behind the Repository. The current `prisma-client` generator emits TypeScript into ignored `backend/src/generated/prisma`; no business models or migrations have been authored yet.
+- Prisma 7 configuration and centralized Prisma Client behind the Repository. The Product model and its migration implement Cycle 1; other business models remain to be coordinated and added by their slice owners.
 - `GET /api/health` endpoint and a Bootstrap-only frontend page that calls it.
+- Raazia-only product list/create/read/update/archive endpoints and the `/admin/products` UI.
 - Backend lockfile and frontend lockfile committed-ready; both apps use ESM.
 
-Bootstrap does **not** include feature slices. Catalogue, inquiry, quotation, negotiation, order, status, wishlist, and sales-summary behavior must be implemented later through the approved plan and contracts.
+The product slice uses a temporary development token assigned the approved `RAAZIA` role server-side. It is not a replacement for Member 2's Supabase Auth middleware. The backend template sets `NODE_ENV=development`; set `NODE_ENV=production` in production, where this mock is disabled, and never configure the development token there.
 
 ## Local setup
 
@@ -91,6 +92,22 @@ npm run dev
 - Backend health check: http://localhost:5000/api/health
 - The Bootstrap page calls the configured `VITE_API_BASE_URL` (default `http://localhost:5000/api`).
 
+### Product Catalogue Administration (Cycle 1 — Member 1)
+
+The admin screen is available at `http://localhost:5173/admin/products`. Set a private `DEV_RAAZIA_TOKEN` value in `backend/.env`; enter that same value in the screen to connect. The server assigns the `RAAZIA` role and does not accept a client-supplied role or user ID. Never configure the mock token in production.
+
+The Product model stores `basePrice` as the Standard Catalogue Price in whole PKR rupees. Public discounts are not stored on Product; discount behavior remains separate and follows the fixed shared-discount rule. Product removal archives the row (`isArchived`) rather than deleting it. Product image entries are existing references only; this slice does not upload images or choose a storage provider. No product-availability state is introduced.
+
+After configuring `DATABASE_URL`, generate the Prisma Client and apply the reviewed migration through the coordinator/schema steward:
+
+```powershell
+cd backend
+npm run prisma:generate
+npx prisma migrate deploy
+```
+
+`backend/prisma/seed-products.json` contains synthetic development-only examples. The seed command requires `NODE_ENV=development` and refuses to run against a non-empty Product table. Replace the examples with approved records before using them to represent Raazia's catalogue.
+
 ### Environment templates
 
 Two generations of templates exist and both are intentionally retained:
@@ -108,7 +125,7 @@ Bootstrap does not establish a live database connection because Supabase credent
 2. Put the Session Pooler PostgreSQL URL (port 5432) in `backend/.env` as `DATABASE_URL`, plus the approved server-side Supabase values.
 3. Put only the public Supabase URL/anon key in `frontend/.env` when Auth work begins.
 4. Run `npm run prisma:generate` from `backend/`.
-5. Add business models/migrations only after the approved contracts are reviewed. The project coordinator/schema steward applies migrations to the shared Supabase database; do not run migrations against a shared database without approval.
+5. Add remaining business models/migrations only after the approved contracts are reviewed. The project coordinator/schema steward applies migrations to the shared Supabase database; do not run migrations against a shared database without approval.
 
 Prisma note: the backend uses Prisma 7's current `prisma-client` generator. It emits TypeScript into `backend/src/generated/prisma`, which is ignored by Git and regenerated by `npm ci`/`npm run prisma:generate`. Node 26 strips the generated types at runtime, so no separate transpilation step is required. The centralized Repository imports `PrismaClient` from the generated `client.ts`; `@prisma/client` remains the runtime package. Do not import the generated client outside the Repository.
 
@@ -116,9 +133,9 @@ Prisma note: the backend uses Prisma 7's current `prisma-client` generator. It e
 
 ```powershell
 cd backend
-npm test              # Vitest + Supertest health/routing tests
+npm test              # Vitest + Supertest health, product API, and authorization tests
 
-cd frontend
+cd ..\frontend
 npm run build         # Vite production build
 ```
 
@@ -251,7 +268,7 @@ Record slice/FR, owner, acceptance criteria, HITL/AFK mode, AI task reference, i
 
 ## Current status
 
-The documentation/UI-reference baseline and Bootstrap scaffold are present. The current Prisma generator and Node 26.13.1 checks passed via `npx`; the system Node is still 22.22.1. Remaining before feature work: install/sign off Node 26 locally, verify the clean-clone `npm ci` path on a second machine, configure Supabase credentials, confirm the live Prisma connection, and complete human Bootstrap acceptance. Feature slices and the business Prisma schema remain intentionally unimplemented. Check [`plan.md`](./plan.md) for the current status and order.
+The Product Catalogue Administration Cycle 1 slice has been implemented in the working tree. Live PostgreSQL persistence, migration execution, approved product seed records, Member 2's Supabase Auth integration, and human acceptance remain to be verified. The project still requires local Node 26 sign-off, second-machine clean-clone verification, and the remaining Cycle 1 feature integrations. Check [`plan.md`](./plan.md) for the current status and order.
 
 ## Official stack references
 

@@ -31,6 +31,32 @@ Use one entry per vertical slice. Keep evidence concise but sufficient to recons
 
 _Add new slice entries below._
 
+### Cycle 1 — Member 1 Product Catalogue Administration
+
+- **Related PRD requirements:** FR-02; supports FR-01; NFR-01 and NFR-02.
+- **Owner:** Member 1.
+- **Plan version:** 1.3 (18 November 2026).
+- **Branch / Pull Request / merge:** Current working tree; no commit or pull request created.
+- **HITL / AFK mode:** HITL.
+- **Reason for mode:** Coordinator decisions were needed for the product schema, temporary auth boundary, and soft-removal behavior.
+- **AI chat/task reference:** Current Copilot chat — Cycle 1 Member 1 Product Catalogue Administration.
+- **Context supplied to agent:** PRD v1.4; `plan.md` Sections 2, 4 and 9; architecture; ADR-002, ADR-004 and ADR-006; AGENTS.md; Guardrails.md; Farochet UI A-03/A-04.
+- **Acceptance criteria:** Product create/read/edit/archive, positive whole-PKR Standard Catalogue Price validation, persistence layer and Raazia-only route boundary implemented. Live database persistence after restart remains unverified.
+- **Important iterations/corrections:**
+  - The initially proposed temporary `ADMIN` role, product `availabilityStatus`, and per-product discount representation conflicted with the existing approved sources. The implementation uses the approved `RAAZIA` role, omits product availability states, and keeps public discounts separate from Product.
+  - Product removal is a confirmed soft archive (`isArchived`); Product rows are retained.
+  - The temporary session token is server-verified and assigns `RAAZIA`; it does not accept a client role or user ID and is disabled for `NODE_ENV=production`.
+  - Synthetic seed records are development-only, require an empty Product table, and were supplied for this task.
+  - Browser smoke testing initially used `127.0.0.1`, which did not match the configured CORS origin; the UI was rechecked at the documented `localhost` origin.
+- **Rejected/revised approach (if any):** No `ADMIN` role, Product availability state, hard delete, or per-product discount/effective-price storage was introduced.
+- **Tests/checks actually run:** Node 26.13.1 — backend Vitest/Supertest suite; Vite production build; Prisma Client generation, schema validation and format check; Prisma schema-to-SQL diff; `git diff --check`; browser page load at 375px viewport.
+- **Actual results:** 3 backend test files / 14 tests passed; frontend build passed (45 modules); Prisma validation and formatting passed; schema-to-SQL diff succeeded; whitespace check passed; page rendered at 375px with no horizontal overflow. Browser check verified the local-session gate and Product-only admin navigation, not a live API/database workflow.
+- **Human decision:** Coordinator approved the slice decisions and seed fixtures; implementation Accept / Revise / Reject review is pending.
+- **Decision reason:** Human acceptance and live persistence verification are still outstanding.
+- **Major issue/change:** Supabase credentials were unavailable; the migration and seed script were not run against a database. Member 2's Supabase Auth integration remains pending.
+- **Integration status:** Implemented in the working tree; not committed or integrated with Supabase.
+- **Evidence link(s):** `backend/tests/products.test.js`; `docs/evidence/Testing_Evidence_Log.md`.
+
 ### Bootstrap — application foundation
 
 - **Related PRD requirements:** None directly; enables all slices through ADR-006 and plan Section 7.
