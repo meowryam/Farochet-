@@ -81,3 +81,26 @@ _Add new slice entries below._
 - **Major issue/change:** Installed Node 26, Supabase credentials and second-machine clean-clone acceptance remain outstanding.
 - **Integration status:** Scaffold integrated in the working tree; not committed.
 - **Evidence link(s):** `docs/evidence/Testing_Evidence_Log.md`.
+
+### C1-M3 - Inquiry Review & Management
+
+- **Related PRD requirements:** FR-07, FR-08.
+- **Owner:** Member 3.
+- **Plan version:** 1.3 (18 November 2026).
+- **Branch / Pull Request / merge:** Direct to `main` (no branches); commit pending.
+- **HITL / AFK mode:** HITL.
+- **Reason for mode:** A shared-schema decision (missing User model) needed a human decision.
+- **AI chat/task reference:** OpenCode session for Member 3 Cycle 1; model: [to be filled in].
+- **Context supplied to agent:** AGENTS.md, Guardrails.md, PRD.md, architecture.md, plan.md Sections 3, 4, 9, 15, 16, UI A-07/A-08, and the Product slice as the pattern.
+- **Acceptance criteria:** plan.md Section 9, Member 3 Cycle 1.
+- **Important iterations/corrections:**
+  - The agent stopped twice with STOP AND ASK (no User model; only a Raazia-only mock auth).
+  - I approved a temporary plain `customerId` with no foreign key, ownership in Business Logic with no customer-facing route, and no migration.
+- **Rejected/revised approach (if any):** Rejected waiting for Member 2's User model, an in-memory-only design, and a customer-facing inquiry endpoint (overlaps Cycle 5).
+- **Tests/checks actually run:** Backend `npm ci` then `npm test`; frontend `npm ci` then `npm run build`; `git status`.
+- **Actual results:** Backend 4 test files / 21 of 21 tests passed, including 7 in `backend/tests/inquiries.test.js`; frontend Vite build succeeded (46 modules transformed, built in 351 ms); `git status` showed only the Inquiry slice files changed, with no `.env`, `node_modules`, `dist`, generated folder, or migration.
+- **Human decision:** Accept (provisional).
+- **Decision reason:** API, role boundary and ownership tests pass and the build succeeds; the screen has not been checked with real data.
+- **Major issue/change:** `customerId` is temporary and customer name/email are not shown until Member 2's User model is merged; the Inquiry migration and Prisma generation against the shared database are pending the coordinator.
+- **Integration status:** Commit pending.
+- **Evidence link(s):** `docs/evidence/Testing_Evidence_Log.md`.

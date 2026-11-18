@@ -46,6 +46,20 @@ async function archiveProduct(id) {
   });
 }
 
+async function listInquiries() {
+  return getPrismaClient().inquiry.findMany({
+    include: { product: { select: { name: true } } },
+    orderBy: [{ createdAt: "desc" }, { id: "asc" }],
+  });
+}
+
+async function findInquiryById(id) {
+  return getPrismaClient().inquiry.findUnique({
+    where: { id },
+    include: { product: { select: { name: true } } },
+  });
+}
+
 async function seedProducts(products) {
   const prisma = getPrismaClient();
 
@@ -71,6 +85,8 @@ const repository = {
   createProduct,
   updateProduct,
   archiveProduct,
+  listInquiries,
+  findInquiryById,
   seedProducts,
 };
 

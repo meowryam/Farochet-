@@ -64,4 +64,12 @@ export function archiveAdminProduct(id) {
   }).then((data) => data.product);
 }
 
+export function listAdminInquiries() {
+  return request("/admin/inquiries").then((data) => data.inquiries);
+}
+
+export function getAdminInquiry(id) {
+  return request(`/admin/inquiries/${encodeURIComponent(id)}`).then((data) => data.inquiry);
+}
+
 export { API_BASE_URL, clearAdminToken, getAdminToken, saveAdminToken };
