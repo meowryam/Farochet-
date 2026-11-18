@@ -1,0 +1,16 @@
+// Prisma 7 schema - Bootstrap baseline only.
+// Business models must be added later from approved contracts and reviewed
+// supporting artifacts (plan.md section 7, item 7). Do not invent the full business schema here.
+
+generator client {
+  provider               = "prisma-client"
+  output                 = "../src/generated/prisma"
+  runtime                = "nodejs"
+  moduleFormat           = "esm"
+  generatedFileExtension = "ts"
+  importFileExtension    = "ts"
+}
+
+datasource db {
+  provider = "postgresql"
+}

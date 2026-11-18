@@ -1,8 +1,8 @@
 # Raazia — Deliverable 4 Implementation Plan
 
-**Plan version:** 1.0  
-**Last updated:** 18 November 2026  
-**Status:** Initial D4 execution baseline; implementation not yet started  
+**Plan version:** 1.3
+**Last updated:** 18 November 2026
+**Status:** Bootstrap scaffold implemented; Prisma 7 current generator and Node 26.13.1 checks passed via npx. Git workflow uses direct commits to `main`. Installed Node 26 sign-off, Supabase credentials and second-machine clean-clone verification remain.
 **Target submission/demo date:** 27 November 2026  
 **Owners:** Member 1, Member 2, Member 3, Member 4; project coordinator owns integration and shared contracts.
 
@@ -112,7 +112,7 @@ No business rule in PRD v1.4 or ADR-001 through ADR-006 may be filled in by assu
 | Member 2 | Authentication/role access, customer inquiry submission, catalogue browsing, wishlist, inquiry/order history |
 | Member 3 | Inquiry review, custom-order submission/review, quotation/negotiation, request acceptance/rejection |
 | Member 4 | Confirmed Order management, manufacturing status, payment recording, delivery details/status, order change/cancellation |
-| Project coordinator | Repository and branch governance, approved stack/ADR, shared API/domain contracts, Prisma schema/migration coordination, UI consistency, PR review and cross-slice integration |
+| Project coordinator | Git workflow coordination, approved stack/ADR, shared API/domain contracts, Prisma schema/migration coordination, UI consistency and cross-slice integration |
 
 A member owns their assigned feature's full vertical slice (UI, Controller/API, Business Logic, Repository/data access, and relevant tests), not just one technical layer.
 
@@ -120,7 +120,7 @@ A member owns their assigned feature's full vertical slice (UI, Controller/API, 
 
 **Owner:** Project coordinator, using a coding agent under HITL review.  
 **Priority:** P0  
-**Status:** Not started.
+**Status:** In progress. Scaffold, frontend/backend startup, Farochet integration, health check and Prisma client wiring are implemented and verified under Node 26.13.1 via `npx node@26`. Supabase connection, installed Node 26 sign-off and second-machine clean-clone acceptance remain outstanding.
 
 Create the cloneable application foundation using ADR-006:
 
@@ -136,15 +136,25 @@ Create the cloneable application foundation using ADR-006:
 10. Test the exact clone → `npm ci` → configure `.env` → run frontend/backend workflow on a second machine or a clean folder.
 
 **Bootstrap acceptance criteria:**
-- [ ] A clean clone installs frontend and backend using `npm ci` without relying on files outside the repository.
-- [ ] React/Vite starts locally.
-- [ ] Express starts locally and its health endpoint responds.
-- [ ] Frontend can call the backend health endpoint.
-- [ ] Prisma 7 can connect to the Supabase PostgreSQL development database through the chosen connection string.
-- [ ] Prisma configuration, migrations and generated client follow Prisma 7 docs.
-- [ ] No real credentials, service-role keys, or `.env` files are committed.
-- [ ] UI Kit references are available in the repository and root `AGENTS.md` includes the UI agent rules.
+- [ ] A clean clone installs frontend and backend using `npm ci` without relying on files outside the repository. *(Current-workspace backend `npm ci` passed under Node 26.13.1 with `postinstall` generating the client; fresh-clone/second-machine check outstanding.)*
+- [x] React/Vite starts locally. *(Node 26.13.1 dev server returned `200`; production build also passed.)*
+- [x] Express starts locally and its health endpoint responds. *(Node 26.13.1 returned `200`.)*
+- [x] Frontend can call the backend health endpoint. *(Verified with headless Chrome against `GET /api/health`.)*
+- [ ] Prisma 7 can connect to the Supabase PostgreSQL development database through the chosen connection string. *(Blocked: no Supabase credentials configured.)*
+- [x] Prisma configuration, migrations and generated client follow Prisma 7 docs. *(Current `prisma-client` generator verified; no business migrations authored yet by design.)*
+- [x] No real credentials, service-role keys, or `.env` files are committed.
+- [x] UI Kit references are available in the repository and root `AGENTS.md` includes the UI agent rules.
 - [ ] A second team member successfully clones and runs the project.
+
+**Bootstrap verification snapshot (18 November 2026):**
+
+- Runtime used for final checks: Node `26.13.1` via `npx node@26`; system Node is still `22.22.1` and installed-Node-26 sign-off remains outstanding.
+- `backend`: clean `npm ci` passed under Node 26.13.1, including the new `postinstall` generation step; `npm test` passed (2 files, 4 tests, Vitest 5.1.1); schema `validate` and `format --check` passed; Express health endpoint returned `200`.
+- `frontend`: `npm run build` passed under Node 26.13.1 (Vite 8.3.8, 38 modules); Vite dev server returned `200`. The headless Chrome end-to-end page check rendered `Connected` and service `raazia-management-api` in the earlier Node 22.22.1 run.
+- Repository verification: the generated Prisma Client is TypeScript under ignored `backend/src/generated/prisma`; the centralized singleton imports `client.ts`, initializes through `@prisma/adapter-pg`, and fails clearly when `DATABASE_URL` is missing.
+- Prisma generator: the deprecated `prisma-client-js` generator was replaced with the current `prisma-client` generator, TypeScript output, ESM import specifiers and Node 26 type stripping. The earlier rejection used the invalid option `generatedFileExtension = "js"` and is superseded.
+- Known tooling advisory: `npm audit --omit=dev` reports 0 vulnerabilities for both apps; full audits report 5 high dev-only findings in each app, including `picomatch` with no patched release. Runtime production dependencies are unaffected.
+- Remaining Bootstrap blockers: live Supabase connection, installed Node 26 sign-off, and fresh-clone/second-member acceptance.
 
 ## 8. Prioritized vertical-slice matrix
 
@@ -529,24 +539,24 @@ A slice may be accepted only after these gates:
 1. **Slice readiness:** linked FR/ADR, limited scope, clear acceptance criteria.
 2. **Functional verification:** core behavior and important negative cases actually executed.
 3. **Architecture/constraint review:** no violation of PRD, ADRs, architecture, `AGENTS.md`, approved stack or exclusions.
-4. **Regression/integration:** the slice works with the latest `dev` and does not break previously accepted flows.
+4. **Regression/integration:** the slice works with the latest `main` and does not break previously accepted flows.
 5. **Human decision:** record `Accept`, `Revise`, or `Reject` with a short reason.
-6. **Integration:** approved PR merged into `dev`; project coordinator validates cross-slice contracts.
+6. **Integration:** approved work is committed directly to `main`; project coordinator validates cross-slice contracts.
 7. **Context update:** update plan, versioned plan history and relevant supporting artifacts/ADR/evidence.
 
 A feature is not complete because an agent says it is complete. A human team member must run the relevant checks and compare actual results with acceptance criteria.
 
 ## 16. Git and AI-agent workflow
 
-- `main`: stable, demo-ready baseline. No direct feature work.
-- `dev`: integration branch for accepted slice PRs.
-- Feature branch: `cycle-<N>/member-<M>/<feature-slug>` created from the latest `dev`.
-- Open Pull Requests into `dev`; do not push feature work directly to `main` or `dev`.
-- A PR must state the slice, linked FR(s), acceptance criteria, files changed, checks actually run, results, assumptions and known issues.
+- All collaborators work directly on `main`. Do not create or use a `dev` branch, feature branches, or pull requests.
+- Before starting work, pull the latest `main`; work only on assigned files/features and stage only relevant files.
+- Commit with descriptive messages, synchronize with remote `main` again before pushing, and push directly to `origin main`.
+- If a push is rejected, pull/rebase onto `origin main`, resolve conflicts, rerun relevant checks, and push again. Never force-push, use destructive resets, or commit `.env` files.
+- Commit messages and workflow evidence must state the slice, linked FR(s), checks actually run, results, assumptions and known issues.
 - Each coding agent must read root `AGENTS.md`, `PRD.md`, `architecture.md`, relevant ADRs, `Guardrails.md`, active `plan.md`, and relevant UI documents before editing.
 - Ask agents to implement one assigned slice only. They must not modify unrelated slices, shared contracts or global design tokens without coordination.
-- Shared Prisma schema/migrations are coordinated by the project coordinator. A member may propose a schema/migration change in a feature branch, but only the coordinator applies it to the shared Supabase development database after review. Never let multiple agents migrate the shared database concurrently.
-- Before a member starts work, they must pull latest `dev` and install dependencies using `npm ci`.
+- Shared Prisma schema/migrations are coordinated on `main` by the project coordinator. Only the coordinator applies migrations to the shared Supabase development database after review. Never let multiple agents migrate the shared database concurrently.
+- Coordinate simultaneous edits to shared files such as Prisma schema, package files, architecture/plan documents and configuration. Before a member starts work, pull latest `main` and install dependencies using `npm ci`.
 - Capture AI task/chat references and meaningful correction loops for D4 evidence; do not reconstruct the history at the end.
 
 ## 17. Workflow and contribution evidence
@@ -565,7 +575,7 @@ For every slice record:
 - Human decision: Accept / Revise / Reject and reason.
 - Major issue/change and how it was resolved.
 - `plan.md` version used.
-- Branch/PR/merge reference and integration status.
+- Commit/integration reference and status.
 
 Group Contribution Log records each member's slice implementation, AI interactions, reviews, corrections, testing, integration and demo preparation. Every member must understand the complete product and the major architecture/technology decisions.
 
@@ -576,13 +586,13 @@ Group Contribution Log records each member's slice implementation, AI interactio
 | D1–D3 requirements and architecture documents | Submitted / existing baseline | Group |
 | PRD v1.4 and ADR-001 to ADR-005 | Existing accepted project baseline | Group |
 | ADR-006 technology stack | Included in this pack as the D4 implementation baseline | Project coordinator; team should flag blockers |
-| GitHub repository/collaborators | Not started in this pack | Project coordinator |
-| Application scaffold | Not started | Project coordinator + agent |
+| GitHub repository/collaborators | Repository exists; collaborator access and clean-clone acceptance pending | Project coordinator |
+| Application scaffold | Implemented in the working tree; Bootstrap acceptance pending | Project coordinator + agent |
 | Supabase project and credentials | Not started | Project coordinator |
-| Prisma schema/migrations | Not started | Project coordinator/schema steward + assigned slice owners |
+| Prisma schema/migrations | Bootstrap config and current generator complete; business schema/migrations not started | Project coordinator/schema steward + assigned slice owners |
 | Cycles 1–5 | Not started | Members 1–4 |
 | End-to-end validation | Not started | All; coordinated by project coordinator |
-| Workflow and contribution evidence | Templates to be initialized before first slice | All |
+| Workflow and contribution evidence | Logs initialized; Bootstrap human acceptance and contribution entry pending | All |
 
 ## 19. Plan change history
 
@@ -590,3 +600,6 @@ Group Contribution Log records each member's slice implementation, AI interactio
 |---|---|---|
 | `plan-v00-source-draft.md` | 18 Nov 2026 | Original submitted implementation plan preserved for historical traceability; contains superseded contracts and is not active guidance. |
 | `plan-v01.md` | 18 Nov 2026 | Reconciled D4 baseline: aligns slices/contracts with PRD v1.4 and ADR-001–006; selects stack; adds bootstrap, Git workflow, quality gates and evidence requirements. |
+| `plan-v02.md` (v1.1) | 18 Nov 2026 | Bootstrap scaffold status and provisional verification snapshot; predecessor of the approved Prisma generator switch. |
+| `plan-v03.md` (v1.2) | 18 Nov 2026 | Adopts the current Prisma 7 `prisma-client` generator, generated TypeScript output and Node 26 verification evidence. |
+| v1.3 (active) | 18 Nov 2026 | Replaces the `dev`/feature-branch/PR workflow with direct synchronization, commit and push to `main`. |

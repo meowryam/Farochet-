@@ -1,0 +1,31 @@
+.bootstrap-page {
+  padding-block: var(--space-10) var(--space-16);
+}
+
+.bootstrap-stack {
+  display: grid;
+  gap: var(--space-6);
+  margin-top: var(--space-8);
+}
+
+.bootstrap-status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.bootstrap-detail {
+  color: var(--color-text-secondary);
+  font-size: 14px;
+}
+
+.bootstrap-list {
+  margin: 0;
+  padding-left: var(--space-5);
+  color: var(--color-text-secondary);
+}
+
+.bootstrap-list li + li {
+  margin-top: var(--space-2);
+}

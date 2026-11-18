@@ -1,0 +1,21 @@
+{
+  "name": "raazia-frontend",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Raazia Customer Inquiry, Quotation, and Custom Order Management System frontend.",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "react-router-dom": "^7.18.5"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^6.3.0",
+    "vite": "^8.3.8"
+  }
+}

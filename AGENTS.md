@@ -1231,9 +1231,44 @@ The agent's responsibility is to implement the system the project has specified 
 
 - The active implementation plan is root `plan.md`. The original submitted draft is historical only at `docs/plan-history/plan-v00-original-draft.md` and contains superseded assumptions; do not use it for implementation.
 - Before a meaningful plan change, preserve the previous active version under `docs/plan-history/plan-vNN.md` or ensure a retrievable Git commit exists. Update the version/date in `plan.md` and retain earlier versions.
-- Use `main` for stable demonstration-ready code and `dev` for integration. Feature branches use `cycle-<N>/member-<M>/<feature-slug>`. Submit Pull Requests into `dev`; do not push feature work directly to `main` or `dev`.
+- All collaborators work directly on `main`. Do not create or use a `dev` branch, feature branches, or pull requests. Pull the latest `main` before starting work, stage only relevant files, commit with descriptive messages, synchronize with `origin main` again before pushing, and push directly to `origin main`.
+- If a push is rejected because another member pushed first, pull/rebase onto `origin main`, resolve conflicts, rerun relevant checks, and push again. Never force-push, use destructive resets, or commit `.env` files. Coordinate simultaneous edits to shared files such as the Prisma schema, package files, architecture/plan documents and configuration.
 - Each member/agent owns one assigned vertical slice at a time. Do not build the product horizontally by separating all frontend, backend, and database work.
-- The project coordinator is the shared Prisma schema/migration steward. Agents may propose schema/migration changes in feature branches; only the coordinator applies migrations to the shared Supabase database after review. Do not run concurrent migrations from multiple agent sessions.
+- The project coordinator is the shared Prisma schema/migration steward. Coordinate schema/migration edits made directly on `main`; only the coordinator applies migrations to the shared Supabase database after review. Do not run concurrent migrations from multiple agent sessions.
 - Before frontend work, read the relevant Farochet `UI_GUIDELINES.md`, `UI_SCREEN_SPEC.md`, `UI_COMPONENT_CATALOG.md`, and `UI_TEAM_WORKFLOW.md`. Merge `AGENTS_UI_INSTRUCTIONS.md` rules into this file (they are also summarized in Section 15); do not replace root instructions with the UI snippet.
-- Maintain `docs/evidence/Workflow_Evidence_Log.md`, `Group_Contribution_Log.md`, and `Testing_Evidence_Log.md`. Record HITL/AFK mode, task/chat reference, iterations, actual tests/results, human decision, PR/merge, and plan version. Do not reconstruct this evidence at the end.
+- Maintain `docs/evidence/Workflow_Evidence_Log.md`, `Group_Contribution_Log.md`, and `Testing_Evidence_Log.md`. Record HITL/AFK mode, task/chat reference, iterations, actual tests/results, human decision, commit/integration, and plan version. Do not reconstruct this evidence at the end.
 - A coding agent's report is not a test result. Human members run relevant checks and make the Accept / Revise / Reject decision.
+
+---
+
+## 24. Shared UI development rules
+
+This section merges the additive UI instructions from `docs/ui/Farochet_UI_Kit_v1.1/docs/ui/AGENTS_UI_INSTRUCTIONS.md`. It does not replace or override the architecture, data, security, or business-rule instructions above.
+
+Before implementing or modifying frontend work, read:
+
+1. `docs/ui/Farochet_UI_Kit_v1.1/docs/ui/UI_GUIDELINES.md`
+2. The relevant screen section in `docs/ui/Farochet_UI_Kit_v1.1/docs/ui/UI_SCREEN_SPEC.md`
+3. `docs/ui/Farochet_UI_Kit_v1.1/docs/ui/UI_COMPONENT_CATALOG.md`
+4. `docs/ui/Farochet_UI_Kit_v1.1/docs/ui/UI_TEAM_WORKFLOW.md`
+
+Rules:
+
+- Follow the Lavender Garden design tokens and visual/interaction rules.
+- Use the Farochet brand on customer-facing screens; identify the private workspace as Farochet Admin. Raazia is the administrator role, not the storefront brand.
+- Reuse existing shared components before creating new ones.
+- Do not duplicate or locally restyle shared Button, TextField, Card, StatusBadge, header, sidebar, or footer components.
+- Implement feature-specific components inside their owning feature folder.
+- Do not change global tokens or shared component behavior without coordination and review.
+- Preserve the crochet-flower illustration style and approved placement/density rules. Decorative artwork must never obscure content or controls.
+- Do not add cart, checkout, stock, ratings, reviews, free-shipping claims, payment-gateway, courier-API, chat, or other unapproved features.
+- Do not invent business status values, price calculations, acceptance decisions, or availability logic in the frontend.
+- Keep Inquiry, Pending Order Request, and confirmed Order distinct.
+- Keep Standard Catalogue Price, public discount, Negotiated Price, and Approved Price distinct.
+- Show manufacturing/order, payment, and delivery statuses separately.
+- Do not access the database, ORM, or Repository from frontend components.
+- Do not treat hidden UI controls as authorization; backend middleware and Business Logic enforce access rules.
+- Before adding a dependency or selecting a new UI library, check the approved stack and repository conventions.
+- If the UI specification conflicts with the PRD or architecture, stop the affected work and raise the conflict instead of inventing a rule.
+
+The integrated copies live in `frontend/src/components/` and `frontend/src/styles/`. The original UI Kit under `docs/ui/Farochet_UI_Kit_v1.1/` remains the design reference and must be preserved.
