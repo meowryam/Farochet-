@@ -87,7 +87,8 @@ _Add new slice entries below._
 - **Related PRD requirements:** FR-07, FR-08.
 - **Owner:** Member 3.
 - **Plan version:** 1.3 (18 November 2026).
-- **Branch / Pull Request / merge:** Direct to `main` (no branches); commit pending.
+- **Branch / Pull Request / merge:** Direct to main (no branches); commit 61aa571.
+- Author note: commit 61aa571 shows the author label i253009 because of local Git settings; the work was done by Member 3 (Wareesha).
 - **HITL / AFK mode:** HITL.
 - **Reason for mode:** A shared-schema decision (missing User model) needed a human decision.
 - **AI chat/task reference:** OpenCode session for Member 3 Cycle 1; model: [to be filled in].
@@ -102,5 +103,5 @@ _Add new slice entries below._
 - **Human decision:** Accept (provisional).
 - **Decision reason:** API, role boundary and ownership tests pass and the build succeeds; the screen has not been checked with real data.
 - **Major issue/change:** `customerId` is temporary and customer name/email are not shown until Member 2's User model is merged; the Inquiry migration and Prisma generation against the shared database are pending the coordinator.
-- **Integration status:** Commit pending.
+- **Integration status:** Pushed to main on 19 Nov 2026 as commit 61aa571. Migration pending the coordinator; customerId relation to User pending Member 2's User model.
 - **Evidence link(s):** `docs/evidence/Testing_Evidence_Log.md`.
