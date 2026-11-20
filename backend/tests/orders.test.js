@@ -15,7 +15,7 @@ function createMemoryRepository() {
     async listOrders() {
       return [...orders].sort((left, right) =>
         right.confirmedAt.getTime() - left.confirmedAt.getTime()
-      );
+      ).map(hydrateOrder);
     },
 
     async findOrderById(id) {

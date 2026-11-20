@@ -12,16 +12,16 @@ datasource db {
 }
 
 model Product {
-  id          String   @id @default(uuid()) @db.Uuid
+  id          String    @id @default(uuid()) @db.Uuid
   name        String
   description String?
   category    String?
-  images      String[] @default([])
+  images      String[]  @default([])
   basePrice   Int
   // The positive-price CHECK is enforced by the initial SQL migration.
-  isArchived  Boolean  @default(false)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  isArchived  Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
   inquiries   Inquiry[]
 
   @@index([isArchived, createdAt])
