@@ -3,11 +3,13 @@ import cors from "cors";
 import repository from "./data-access/repositories/index.js";
 import productManagement, { createProductManagement } from "./business-logic/product/index.js";
 import inquiryManagement, { createInquiryManagement } from "./business-logic/inquiry/index.js";
+import orderManagement, { createOrderManagement } from "./business-logic/order/index.js";
 import pricingAndDiscountManagement from "./business-logic/pricing/index.js";
 import { authenticateRequest } from "./presentation/middleware/authentication.js";
 import healthRoutes from "./presentation/routes/health.routes.js";
 import { createProductRoutes } from "./presentation/routes/product.routes.js";
 import { createInquiryRoutes } from "./presentation/routes/inquiry.routes.js";
+import { createOrderRoutes } from "./presentation/routes/order.routes.js";
 import { notFoundHandler } from "./presentation/middleware/notFoundHandler.js";
 import { errorHandler } from "./presentation/middleware/errorHandler.js";
 
@@ -15,6 +17,7 @@ export function createApp({
   dataRepository = repository,
   productManagement: productManagementOverride,
   inquiryManagement: inquiryManagementOverride,
+  orderManagement: orderManagementOverride,
   authenticate = authenticateRequest,
 } = {}) {
   const app = express();
@@ -31,6 +34,12 @@ export function createApp({
       ? inquiryManagement
       : createInquiryManagement({ repository: dataRepository })
   );
+  const orders = orderManagementOverride ?? (
+    dataRepository === repository
+      ? orderManagement
+      : createOrderManagement({ repository: dataRepository })
+  );
+  const orderRoutes = createOrderRoutes({ orderManagement: orders, authenticate });
 
   app.use(cors({ origin: process.env.FRONTEND_URL ?? "http://localhost:5173" }));
   app.use(express.json());
@@ -44,6 +53,8 @@ export function createApp({
     "/api/admin/inquiries",
     createInquiryRoutes({ inquiryManagement: inquiries, authenticate }),
   );
+  app.use("/api/admin/orders", orderRoutes.adminRouter);
+  app.use("/api/customer/orders", orderRoutes.customerRouter);
 
   app.use(notFoundHandler);
   app.use(errorHandler);

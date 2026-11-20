@@ -72,4 +72,12 @@ export function getAdminInquiry(id) {
   return request(`/admin/inquiries/${encodeURIComponent(id)}`).then((data) => data.inquiry);
 }
 
+export function listAdminOrders() {
+  return request("/admin/orders").then((data) => data.orders);
+}
+
+export function getAdminOrder(id) {
+  return request(`/admin/orders/${encodeURIComponent(id)}`).then((data) => data.order);
+}
+
 export { API_BASE_URL, clearAdminToken, getAdminToken, saveAdminToken };

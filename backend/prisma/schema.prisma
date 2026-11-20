@@ -36,4 +36,22 @@ model Inquiry {
   product    Product? @relation(fields: [productId], references: [id])
   message    String
   createdAt  DateTime @default(now())
+  orders     Order[]
+}
+
+model Order {
+  id                      String    @id @default(uuid()) @db.Uuid
+  inquiryId               String    @db.Uuid
+  inquiry                 Inquiry   @relation(fields: [inquiryId], references: [id])
+  approvedPrice           Int
+  negotiatedPriceSnapshot Int?
+  manufacturingStatus     String    @default("Incomplete")
+  paymentStatus           String?
+  deliveryStatus          String?
+  estimatedCompletionDate DateTime?
+  confirmedAt             DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
+
+  @@index([inquiryId, confirmedAt])
+  @@index([manufacturingStatus, confirmedAt])
 }

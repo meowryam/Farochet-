@@ -60,6 +60,32 @@ async function findInquiryById(id) {
   });
 }
 
+async function listOrders() {
+  return getPrismaClient().order.findMany({
+    include: {
+      inquiry: {
+        include: {
+          product: { select: { id: true, name: true } },
+        },
+      },
+    },
+    orderBy: [{ confirmedAt: "desc" }, { id: "asc" }],
+  });
+}
+
+async function findOrderById(id) {
+  return getPrismaClient().order.findUnique({
+    where: { id },
+    include: {
+      inquiry: {
+        include: {
+          product: { select: { id: true, name: true } },
+        },
+      },
+    },
+  });
+}
+
 async function seedProducts(products) {
   const prisma = getPrismaClient();
 
@@ -87,6 +113,8 @@ const repository = {
   archiveProduct,
   listInquiries,
   findInquiryById,
+  listOrders,
+  findOrderById,
   seedProducts,
 };
 

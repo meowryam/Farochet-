@@ -1,6 +1,7 @@
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import ProductManagementPage from "./features/catalogue/ProductManagementPage";
 import InquiryManagementPage from "./features/inquiries/InquiryManagementPage";
+import OrderManagementPage from "./features/orders/OrderManagementPage";
 import BootstrapStatusPage from "./pages/BootstrapStatusPage";
 
 export default function App() {
@@ -10,6 +11,7 @@ export default function App() {
         <Route path="/admin" element={<Navigate to="/admin/products" replace />} />
         <Route path="/admin/products" element={<ProductManagementPage />} />
         <Route path="/admin/inquiries" element={<InquiryManagementPage />} />
+        <Route path="/admin/orders" element={<OrderManagementPage />} />
         <Route path="*" element={<BootstrapStatusPage />} />
       </Routes>
     </BrowserRouter>
