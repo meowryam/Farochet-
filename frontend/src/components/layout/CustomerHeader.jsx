@@ -4,6 +4,7 @@ import FarochetLogo from "../brand/FarochetLogo";
 const DEFAULT_LINKS = [
   { label: "Catalogue", href: "/catalogue" },
   { label: "Custom Request", href: "/custom-request" },
+  { label: "My Orders", href: "/orders" },
 ];
 
 export default function CustomerHeader({ links = DEFAULT_LINKS, currentPath = "", accountHref = "/login", wishlistHref = "/wishlist" }) {

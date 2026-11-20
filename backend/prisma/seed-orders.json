@@ -1,0 +1,38 @@
+[
+  {
+    "orderId": "a0b2bb1e-2228-4a59-9f98-29b0304d8c01",
+    "inquiryId": "b0b2bb1e-2228-4a59-9f98-29b0304d8c01",
+    "customerId": "c0b2bb1e-2228-4a59-9f98-29b0304d8c01",
+    "productName": "Handcrafted Silk Ensemble",
+    "message": "I would like to confirm a custom festive outfit.",
+    "approvedPrice": 18500,
+    "negotiatedPriceSnapshot": 18000,
+    "manufacturingStatus": "Incomplete",
+    "paymentStatus": null,
+    "deliveryStatus": null
+  },
+  {
+    "orderId": "a0b2bb1e-2228-4a59-9f98-29b0304d8c02",
+    "inquiryId": "b0b2bb1e-2228-4a59-9f98-29b0304d8c02",
+    "customerId": "c0b2bb1e-2228-4a59-9f98-29b0304d8c02",
+    "productName": "Embroidered Velvet Shawl",
+    "message": "Please confirm the shawl order with the discussed changes.",
+    "approvedPrice": 9800,
+    "negotiatedPriceSnapshot": 9500,
+    "manufacturingStatus": "In Progress",
+    "paymentStatus": "Partial Payment",
+    "deliveryStatus": null
+  },
+  {
+    "orderId": "a0b2bb1e-2228-4a59-9f98-29b0304d8c03",
+    "inquiryId": "b0b2bb1e-2228-4a59-9f98-29b0304d8c03",
+    "customerId": "c0b2bb1e-2228-4a59-9f98-29b0304d8c03",
+    "productName": "Handcrafted Silk Ensemble",
+    "message": "I am confirming an ensemble order for a family event.",
+    "approvedPrice": 22000,
+    "negotiatedPriceSnapshot": null,
+    "manufacturingStatus": "Completed",
+    "paymentStatus": "Full Payment",
+    "deliveryStatus": "Delivered"
+  }
+]

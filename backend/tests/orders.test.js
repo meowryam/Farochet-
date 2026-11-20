@@ -154,6 +154,29 @@ describe("Confirmed Order Management API", () => {
       .get(`/api/customer/orders/${foreign.order.id}`)
       .expect(403);
   });
+
+  it("supports the customer URL contract with independently injected authentication", async () => {
+    const customerId = randomUUID();
+    const owned = seedOrder(dataRepository, { inquiry: { customerId } });
+    const appWithCustomerAuth = createApp({
+      dataRepository,
+      authenticate: raaziaSession,
+      authenticateCustomer: customerSession(customerId),
+    });
+
+    await request(appWithCustomerAuth)
+      .get("/api/orders/my")
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body.orders).toHaveLength(1);
+        expect(body.orders[0].id).toBe(owned.order.id);
+      });
+
+    await request(appWithCustomerAuth)
+      .get(`/api/orders/${owned.order.id}`)
+      .expect(200)
+      .expect(({ body }) => expect(body.order.id).toBe(owned.order.id));
+  });
 });
 
 describe("Confirmed Order ownership and status independence", () => {

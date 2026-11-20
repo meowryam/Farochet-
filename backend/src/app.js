@@ -19,6 +19,7 @@ export function createApp({
   inquiryManagement: inquiryManagementOverride,
   orderManagement: orderManagementOverride,
   authenticate = authenticateRequest,
+  authenticateCustomer = authenticate,
 } = {}) {
   const app = express();
   const products = productManagementOverride ?? (
@@ -39,7 +40,11 @@ export function createApp({
       ? orderManagement
       : createOrderManagement({ repository: dataRepository })
   );
-  const orderRoutes = createOrderRoutes({ orderManagement: orders, authenticate });
+  const orderRoutes = createOrderRoutes({
+    orderManagement: orders,
+    authenticate,
+    authenticateCustomer,
+  });
 
   app.use(cors({ origin: process.env.FRONTEND_URL ?? "http://localhost:5173" }));
   app.use(express.json());
@@ -55,6 +60,7 @@ export function createApp({
   );
   app.use("/api/admin/orders", orderRoutes.adminRouter);
   app.use("/api/customer/orders", orderRoutes.customerRouter);
+  app.use("/api/orders", orderRoutes.customerRouter);
 
   app.use(notFoundHandler);
   app.use(errorHandler);

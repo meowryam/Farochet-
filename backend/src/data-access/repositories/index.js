@@ -60,6 +60,14 @@ async function findInquiryById(id) {
   });
 }
 
+async function upsertInquiry(id, data) {
+  return getPrismaClient().inquiry.upsert({
+    where: { id },
+    create: { id, ...data },
+    update: data,
+  });
+}
+
 async function listOrders() {
   return getPrismaClient().order.findMany({
     include: {
@@ -70,6 +78,14 @@ async function listOrders() {
       },
     },
     orderBy: [{ confirmedAt: "desc" }, { id: "asc" }],
+  });
+}
+
+async function upsertOrder(id, data) {
+  return getPrismaClient().order.upsert({
+    where: { id },
+    create: { id, ...data },
+    update: data,
   });
 }
 
@@ -113,7 +129,9 @@ const repository = {
   archiveProduct,
   listInquiries,
   findInquiryById,
+  upsertInquiry,
   listOrders,
+  upsertOrder,
   findOrderById,
   seedProducts,
 };

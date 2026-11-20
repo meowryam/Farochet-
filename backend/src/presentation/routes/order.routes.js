@@ -6,6 +6,7 @@ import { requireRole } from "../middleware/authorizeRole.js";
 function createOrderRoutes({
   orderManagement,
   authenticate = authenticateRequest,
+  authenticateCustomer = authenticate,
 } = {}) {
   if (!orderManagement) {
     throw new Error("Order routes require Order Management.");
@@ -18,7 +19,8 @@ function createOrderRoutes({
   adminRouter.get("/:id", controller.get);
 
   const customerRouter = Router();
-  customerRouter.use(authenticate, requireRole("CUSTOMER"));
+  customerRouter.use(authenticateCustomer, requireRole("CUSTOMER"));
+  customerRouter.get("/my", controller.list);
   customerRouter.get("/", controller.list);
   customerRouter.get("/:id", controller.get);
 

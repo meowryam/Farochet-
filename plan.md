@@ -1,8 +1,9 @@
 # Raazia — Deliverable 4 Implementation Plan
 
-**Plan version:** 1.3
-**Last updated:** 18 November 2026
-**Status:** Bootstrap scaffold implemented; Prisma 7 current generator and Node 26.13.1 checks passed via npx. Git workflow uses direct commits to `main`. Installed Node 26 sign-off, Supabase credentials and second-machine clean-clone verification remain.
+**Plan version:** 1.4
+**Last updated:** 20 November 2026
+**Status:** Bootstrap scaffold and Cycle 1 Member 4 confirmed-order code slice implemented. Member 4 backend tests, frontend build and Prisma schema checks pass. Live Supabase migration/seed execution, centralized authentication integration, installed Node 26 sign-off and second-machine clean-clone verification remain.
+**Previous plan version:** 1.3 is preserved at Git commit `cf3bbed`.
 **Target submission/demo date:** 27 November 2026  
 **Owners:** Member 1, Member 2, Member 3, Member 4; project coordinator owns integration and shared contracts.
 
@@ -226,11 +227,11 @@ Cycle dependencies and integration checks are in Sections 9–13.
 **Scope:** Create the Order Management interfaces and customer/admin list/detail views using approved fixtures. Do not invent a manual order-creation path that bypasses acceptance of a PendingOrderRequest. The confirmed Order must directly reference its original Inquiry.
 
 **Acceptance criteria:**
-- [ ] Raazia can list and inspect representative confirmed Orders.
-- [ ] A customer can access only their own Order details.
-- [ ] The three Order status attributes exist independently: manufacturing/order, payment, delivery.
-- [ ] Fixture/new Order values follow ADR-005: `Incomplete`, `NULL`, `NULL`; UI displays `Not yet recorded` for nullable payment/delivery.
-- [ ] No `sourceRequestId` is used as a replacement for the direct original Inquiry reference.
+- [x] Raazia can list and inspect representative confirmed Orders.
+- [x] A customer can access only their own Order details.
+- [x] The three Order status attributes exist independently: manufacturing/order, payment, delivery.
+- [x] Fixture/new Order values follow ADR-005: `Incomplete`, `NULL`, `NULL`; UI displays `Not yet recorded` for nullable payment/delivery.
+- [x] No `sourceRequestId` is used as a replacement for the direct original Inquiry reference.
 
 **Checks:** ownership isolation; status null/default handling; no unauthorized admin access; no cross-status side effects.
 
