@@ -73,9 +73,17 @@ describe("Raazia Availability Management API", () => {
       .expect(({ body }) => expect(body.availability.information).toBe(
         "Taking a short break; new inquiries are retained.",
       ));
+
+    await request(app)
+      .get("/api/availability")
+      .expect(200)
+      .expect(({ body }) => expect(body.availability.information).toBe(
+        "Taking a short break; new inquiries are retained.",
+      ));
   });
 
   it("rejects blank, oversized, and extra availability fields", async () => {
+    await request(app).put("/api/admin/availability").send({}).expect(400);
     await request(app).put("/api/admin/availability").send({ information: " " }).expect(400);
     await request(app).put("/api/admin/availability").send({ information: "x".repeat(2001) }).expect(400);
     await request(app).put("/api/admin/availability").send({
@@ -95,5 +103,20 @@ describe("Raazia Availability Management API", () => {
       .put("/api/admin/availability")
       .send({ information: "I am available" })
       .expect(403);
+  });
+
+  it("rejects unauthenticated admin availability requests", async () => {
+    const unauthenticatedApp = createApp({ dataRepository });
+
+    await request(unauthenticatedApp)
+      .get("/api/admin/availability")
+      .set("x-user-role", "RAAZIA")
+      .set("x-user-id", "forged-user-id")
+      .expect(401);
+
+    await request(unauthenticatedApp)
+      .put("/api/admin/availability")
+      .send({ information: "I am available" })
+      .expect(401);
   });
 });

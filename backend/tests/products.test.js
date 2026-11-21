@@ -125,6 +125,29 @@ describe("Product Catalogue Administration API", () => {
     await request(app).get("/api/admin/products/not-a-uuid").expect(400);
   });
 
+  it("rejects operations on missing products", async () => {
+    const id = randomUUID();
+
+    await request(app).get(`/api/admin/products/${id}`).expect(404);
+    await request(app).put(`/api/admin/products/${id}`).send(validProduct).expect(404);
+    await request(app).patch(`/api/admin/products/${id}/archive`).expect(404);
+  });
+
+  it("keeps a repeated archive operation idempotent", async () => {
+    const created = await request(app)
+      .post("/api/admin/products")
+      .send(validProduct)
+      .expect(201);
+
+    await request(app)
+      .patch(`/api/admin/products/${created.body.product.id}/archive`)
+      .expect(200);
+    await request(app)
+      .patch(`/api/admin/products/${created.body.product.id}/archive`)
+      .expect(200)
+      .expect(({ body }) => expect(body.product.isArchived).toBe(true));
+  });
+
   it("rejects product availability states and per-product discount fields", async () => {
     await request(app)
       .post("/api/admin/products")

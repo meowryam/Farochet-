@@ -2,12 +2,11 @@ import React, { useState } from "react";
 import FarochetLogo from "../brand/FarochetLogo";
 
 const DEFAULT_LINKS = [
-  { label: "Catalogue", href: "/catalogue" },
-  { label: "Custom Request", href: "/custom-request" },
   { label: "My Orders", href: "/orders" },
+  { label: "Availability", href: "/availability" },
 ];
 
-export default function CustomerHeader({ links = DEFAULT_LINKS, currentPath = "", accountHref = "/login", wishlistHref = "/wishlist" }) {
+export default function CustomerHeader({ links = DEFAULT_LINKS, currentPath = "", accountHref = "/customer", wishlistHref }) {
   const [menuOpen, setMenuOpen] = useState(false);
 
   return (
@@ -40,7 +39,7 @@ export default function CustomerHeader({ links = DEFAULT_LINKS, currentPath = ""
       </nav>
       <div className="faro-customer-actions">
         <a href={accountHref}>Account</a>
-        <a href={wishlistHref}>Wishlist</a>
+        {wishlistHref && <a href={wishlistHref}>Wishlist</a>}
       </div>
     </header>
   );

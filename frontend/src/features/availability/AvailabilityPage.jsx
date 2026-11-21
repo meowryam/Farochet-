@@ -6,6 +6,7 @@ import { getPublicAvailability } from "../../services/api";
 export default function AvailabilityPage() {
   const [availability, setAvailability] = useState(null);
   const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     let active = true;
@@ -15,6 +16,9 @@ export default function AvailabilityPage() {
       })
       .catch((loadError) => {
         if (active) setError(loadError instanceof Error ? loadError.message : "Could not load availability.");
+      })
+      .finally(() => {
+        if (active) setIsLoading(false);
       });
     return () => { active = false; };
   }, []);
@@ -23,10 +27,13 @@ export default function AvailabilityPage() {
     <main className="availability-public-page">
       <Card title="Current Availability">
         {error && <Alert tone="error">{error}</Alert>}
-        {!error && !availability && (
+        {!error && isLoading && (
+          <p className="availability-not-provided" role="status">Loading availability…</p>
+        )}
+        {!error && !isLoading && !availability && (
           <p className="availability-not-provided">Availability has not yet been provided.</p>
         )}
-        {!error && availability && <p className="availability-information">{availability.information}</p>}
+        {!error && !isLoading && availability && <p className="availability-information">{availability.information}</p>}
       </Card>
     </main>
   );
