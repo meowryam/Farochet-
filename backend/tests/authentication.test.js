@@ -518,6 +518,30 @@ describe("Supabase authentication middleware", () => {
       });
   });
 
+  it("returns a safe unavailable error when registration provider configuration is missing", async () => {
+    const app = createTestApp({
+      userRepository: { createCustomerRegistrationIntent: vi.fn() },
+      fetchUser: vi.fn(),
+      authControllerOptions: {
+        fetchProvider: vi.fn(),
+        supabaseUrl: "https://project.supabase.co",
+        publishableKey: "sb_publishable_test",
+        serviceRoleKey: undefined,
+        frontendUrl: "https://farochet.example",
+        logger: { error: vi.fn() },
+      },
+    });
+
+    await request(app)
+      .post("/api/auth/register")
+      .send(registrationDetails)
+      .expect(503)
+      .expect(({ body }) => {
+        expect(body.error.code).toBe("AUTH_PROVIDER_NOT_CONFIGURED");
+        expect(body.error.message).toBe("Customer registration is temporarily unavailable.");
+      });
+  });
+
   it("does not turn Supabase outages into successful authentication", async () => {
     const app = createTestApp({
       userRepository: { findUserById: vi.fn() },

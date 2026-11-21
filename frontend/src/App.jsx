@@ -11,6 +11,7 @@ import BootstrapStatusPage from "./pages/BootstrapStatusPage";
 import CustomerAccountPage from "./pages/CustomerAccountPage";
 import CustomerRegistrationPage from "./pages/CustomerRegistrationPage";
 import SignInPage from "./pages/SignInPage";
+import AuthCallbackPage from "./pages/AuthCallbackPage";
 
 export default function App() {
   return (
@@ -19,6 +20,7 @@ export default function App() {
         <Routes>
           <Route path="/sign-in" element={<SignInPage />} />
           <Route path="/register" element={<CustomerRegistrationPage />} />
+          <Route path="/auth/callback" element={<AuthCallbackPage />} />
           <Route path="/admin/sign-in" element={<SignInPage adminOnly />} />
           <Route
             path="/admin"
@@ -44,6 +46,10 @@ export default function App() {
           <Route path="/availability" element={<AvailabilityPage />} />
           <Route
             path="/customer"
+            element={<Navigate to="/account" replace />}
+          />
+          <Route
+            path="/account"
             element={<RequireAuth roles={["CUSTOMER"]}><CustomerAccountPage /></RequireAuth>}
           />
           <Route path="*" element={<BootstrapStatusPage />} />

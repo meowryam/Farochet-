@@ -26,7 +26,7 @@ export default function RequireAuth({ roles, children }) {
   }
 
   if (!roles.includes(user.role)) {
-    return <Navigate to={user.role === "RAAZIA" ? "/admin/products" : "/customer"} replace />;
+    return <Navigate to={user.role === "RAAZIA" ? "/admin/products" : "/account"} replace />;
   }
 
   return children;

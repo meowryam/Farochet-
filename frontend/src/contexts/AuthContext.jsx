@@ -133,8 +133,17 @@ export function AuthProvider({ children }) {
     const { data, error: signInError } = await client.auth.signInWithPassword({ email, password });
     if (signInError) throw new Error(getSignInErrorMessage(signInError));
     if (!data.session) throw new Error("Supabase did not return a sign-in session.");
-    return loadExistingProfile(data.session);
-  }, [loadExistingProfile]);
+    try {
+      return await loadExistingProfile(data.session);
+    } catch (profileError) {
+      if (profileError?.code !== "APPLICATION_PROFILE_REQUIRED") throw profileError;
+
+      await activateCustomerRegistration(data.session.access_token);
+      const profile = await completeCustomerProfile(data.session.access_token);
+      saveProfileForSession(data.session, profile);
+      return profile;
+    }
+  }, [loadExistingProfile, saveProfileForSession]);
 
   const signUp = useCallback(async ({ displayName, email, password }) => {
     return registerCustomer({
@@ -156,6 +165,19 @@ export function AuthProvider({ children }) {
     return userProfile;
   }, [saveProfileForSession]);
 
+  const completePendingRegistration = useCallback(async (nextSession) => {
+    const client = getSupabaseClient();
+    const sessionToUse = nextSession ?? (await client.auth.getSession()).data.session;
+    if (!sessionToUse?.access_token) {
+      throw new Error("A valid confirmation session was not found. Sign in again or request registration again.");
+    }
+
+    await activateCustomerRegistration(sessionToUse.access_token);
+    const profile = await completeCustomerProfile(sessionToUse.access_token);
+    saveProfileForSession(sessionToUse, profile);
+    return profile;
+  }, [saveProfileForSession]);
+
   const signOut = useCallback(async () => {
     const client = getSupabaseClient();
     const { error: signOutError } = await client.auth.signOut();
@@ -171,6 +193,7 @@ export function AuthProvider({ children }) {
       signIn,
       signUp,
       completeCustomerRegistration,
+      completePendingRegistration,
       signOut,
     }}>
       {children}

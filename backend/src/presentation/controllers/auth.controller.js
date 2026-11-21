@@ -58,7 +58,7 @@ function createAuthController({
   }
 
   async function sendSignupConfirmation(email) {
-    const confirmationUrl = new URL("/sign-in", frontendUrl).toString();
+    const confirmationUrl = new URL("/auth/callback", frontendUrl).toString();
     const resendUrl = new URL(authEndpoint(supabaseUrl, "resend"));
     resendUrl.searchParams.set("redirect_to", confirmationUrl);
 

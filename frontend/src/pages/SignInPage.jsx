@@ -36,7 +36,7 @@ export default function SignInPage({ adminOnly = false }) {
       }
       navigate(
         location.state?.from?.pathname
-          ?? (profile.role === "RAAZIA" ? "/admin/products" : "/customer"),
+          ?? (profile.role === "RAAZIA" ? "/admin/products" : "/account"),
         { replace: true },
       );
     } catch (signInError) {

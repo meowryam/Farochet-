@@ -11,6 +11,7 @@ export default function CustomerRegistrationPage() {
   const [displayName, setDisplayName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [passwordConfirmation, setPasswordConfirmation] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [registrationSubmitted, setRegistrationSubmitted] = useState(false);
@@ -22,6 +23,27 @@ export default function CustomerRegistrationPage() {
     event.preventDefault();
     setSubmitting(true);
     setError("");
+
+    if (displayName.trim().length === 0) {
+      setError("Enter a display name.");
+      setSubmitting(false);
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      setError("Enter a valid email address.");
+      setSubmitting(false);
+      return;
+    }
+    if (password.length === 0) {
+      setError("Enter a password.");
+      setSubmitting(false);
+      return;
+    }
+    if (password !== passwordConfirmation) {
+      setError("Passwords do not match.");
+      setSubmitting(false);
+      return;
+    }
 
     try {
       const result = await signUp({ displayName, email, password });
@@ -53,6 +75,8 @@ export default function CustomerRegistrationPage() {
               {emailConfirmationRequired
                 ? "After confirming your email, sign in to finish setting up your Customer profile."
                 : "Sign in to finish setting up your Customer profile."}
+              <br />
+              Check your inbox and spam folder for the confirmation email.
             </p>
             <Link to="/sign-in" state={{ completeCustomerRegistration: true }}>
               Continue to finish Customer setup
@@ -87,6 +111,15 @@ export default function CustomerRegistrationPage() {
                 autoComplete="new-password"
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
+                required
+              />
+              <TextField
+                id="registration-password-confirmation"
+                label="Confirm password"
+                type="password"
+                autoComplete="new-password"
+                value={passwordConfirmation}
+                onChange={(event) => setPasswordConfirmation(event.target.value)}
                 required
               />
               <Button type="submit" fullWidth loading={submitting}>Create Account</Button>

@@ -6,7 +6,12 @@ const DEFAULT_LINKS = [
   { label: "Availability", href: "/availability" },
 ];
 
-export default function CustomerHeader({ links = DEFAULT_LINKS, currentPath = "", accountHref = "/customer", wishlistHref }) {
+export default function CustomerHeader({
+  links = DEFAULT_LINKS,
+  currentPath = "",
+  accountHref = "/customer",
+  wishlistHref,
+}) {
   const [menuOpen, setMenuOpen] = useState(false);
 
   return (

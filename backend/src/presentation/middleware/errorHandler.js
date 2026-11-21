@@ -8,7 +8,9 @@ export function errorHandler(err, _req, res, _next) {
   res.status(statusCode).json({
     error: {
       code: err?.code ?? "INTERNAL_ERROR",
-      message: statusCode >= 500 ? "An unexpected error occurred." : err?.message ?? "An error occurred.",
+      message: statusCode >= 500 && statusCode !== 503
+        ? "An unexpected error occurred."
+        : err?.message ?? "An error occurred.",
     },
   });
 }
