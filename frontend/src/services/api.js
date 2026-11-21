@@ -148,6 +148,13 @@ export function getAdminOrder(id) {
   return request(`/admin/orders/${encodeURIComponent(id)}`).then((data) => data.order);
 }
 
+export function updateAdminManufacturingProgress(id, progress) {
+  return request(`/admin/orders/${encodeURIComponent(id)}/status`, {
+    method: "PATCH",
+    body: JSON.stringify(progress),
+  }).then((data) => data.order);
+}
+
 export function listMyOrders(token = getCustomerAccessToken()) {
   return request("/orders/my", {
     token,

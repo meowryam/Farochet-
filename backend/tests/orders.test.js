@@ -23,6 +23,13 @@ function createMemoryRepository() {
       if (!order) return null;
       return hydrateOrder(order);
     },
+
+    async updateOrderManufacturing(id, data) {
+      const order = orders.find((item) => item.id === id);
+      if (!order) return null;
+      Object.assign(order, data, { updatedAt: new Date() });
+      return hydrateOrder(order);
+    },
   };
 
   function hydrateOrder(order) {
@@ -214,5 +221,109 @@ describe("Confirmed Order ownership and status independence", () => {
       paymentStatus: "Partial Payment",
       deliveryStatus: null,
     });
+  });
+
+  it("lets Raazia update manufacturing status and the optional estimate without changing payment or delivery", async () => {
+    const dataRepository = createMemoryRepository();
+    const app = createApp({ dataRepository, authenticate: raaziaSession });
+    const { order } = seedOrder(dataRepository, {
+      order: {
+        paymentStatus: "Partial Payment",
+        deliveryStatus: null,
+      },
+    });
+
+    await request(app)
+      .patch(`/api/admin/orders/${order.id}/status`)
+      .send({
+        manufacturingStatus: "Completed",
+        estimatedCompletionDate: "2026-12-15",
+      })
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body.order.manufacturingStatus).toBe("Completed");
+        expect(body.order.estimatedCompletionDate).toBe("2026-12-15T00:00:00.000Z");
+        expect(body.order.paymentStatus).toBe("Partial Payment");
+        expect(body.order.deliveryStatus).toBeNull();
+      });
+
+    await request(app)
+      .get(`/api/admin/orders/${order.id}`)
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body.order.manufacturingStatus).toBe("Completed");
+        expect(body.order.paymentStatus).toBe("Partial Payment");
+        expect(body.order.deliveryStatus).toBeNull();
+      });
+  });
+
+  it("rejects invalid, empty, malformed-date, and missing manufacturing progress updates", async () => {
+    const dataRepository = createMemoryRepository();
+    const app = createApp({ dataRepository, authenticate: raaziaSession });
+    const { order } = seedOrder(dataRepository);
+
+    await request(app)
+      .patch(`/api/admin/orders/${order.id}/status`)
+      .send({ manufacturingStatus: "Finished" })
+      .expect(400);
+
+    await request(app)
+      .patch(`/api/admin/orders/${order.id}/status`)
+      .send({})
+      .expect(400);
+
+    await request(app)
+      .patch(`/api/admin/orders/${order.id}/status`)
+      .send({ estimatedCompletionDate: "2026-02-30" })
+      .expect(400);
+
+    await request(app)
+      .patch(`/api/admin/orders/${randomUUID()}/status`)
+      .send({ manufacturingStatus: "In Progress" })
+      .expect(404);
+  });
+
+  it("allows Raazia to clear the estimate and lists Not yet provided only in the customer view contract", async () => {
+    const dataRepository = createMemoryRepository();
+    const app = createApp({ dataRepository, authenticate: raaziaSession });
+    const customerId = randomUUID();
+    const { order } = seedOrder(dataRepository, {
+      inquiry: { customerId },
+      order: { estimatedCompletionDate: new Date("2026-12-15T00:00:00.000Z") },
+    });
+
+    await request(app)
+      .patch(`/api/admin/orders/${order.id}/status`)
+      .send({ estimatedCompletionDate: null })
+      .expect(200)
+      .expect(({ body }) => expect(body.order.estimatedCompletionDate).toBeNull());
+
+    const customerApp = createApp({
+      dataRepository,
+      authenticate: customerSession(customerId),
+    });
+    await request(customerApp)
+      .get(`/api/customer/orders/${order.id}`)
+      .expect(200)
+      .expect(({ body }) => expect(body.order.estimatedCompletionDate).toBeNull());
+  });
+
+  it("rejects unauthenticated and Customer attempts to update manufacturing progress", async () => {
+    const dataRepository = createMemoryRepository();
+    const { order } = seedOrder(dataRepository);
+    const unauthenticatedApp = createApp({ dataRepository });
+    await request(unauthenticatedApp)
+    .patch(`/api/admin/orders/${order.id}/status`)
+    .send({ manufacturingStatus: "Completed" })
+    .expect(401);
+
+    const customerApp = createApp({
+    dataRepository,
+    authenticate: customerSession(randomUUID()),
+    });
+    await request(customerApp)
+    .patch(`/api/admin/orders/${order.id}/status`)
+    .send({ manufacturingStatus: "Completed" })
+    .expect(403);
   });
 });

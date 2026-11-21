@@ -5,6 +5,7 @@ import { requireRole } from "../middleware/authorizeRole.js";
 
 function createOrderRoutes({
   orderManagement,
+  statusManagement,
   authenticate = authenticateRequest,
   authenticateCustomer = authenticate,
 } = {}) {
@@ -12,11 +13,15 @@ function createOrderRoutes({
     throw new Error("Order routes require Order Management.");
   }
 
-  const controller = createOrderController(orderManagement);
+  if (!statusManagement) {
+    throw new Error("Order routes require Status Management.");
+  }
+  const controller = createOrderController(orderManagement, statusManagement);
   const adminRouter = Router();
   adminRouter.use(authenticate, requireRole("RAAZIA"));
   adminRouter.get("/", controller.list);
   adminRouter.get("/:id", controller.get);
+  adminRouter.patch("/:id/status", controller.updateManufacturingProgress);
 
   const customerRouter = Router();
   customerRouter.use(authenticateCustomer, requireRole("CUSTOMER"));

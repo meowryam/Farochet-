@@ -102,6 +102,13 @@ async function findOrderById(id) {
   });
 }
 
+async function updateOrderManufacturing(id, data) {
+  return getPrismaClient().order.update({
+    where: { id },
+    data,
+  });
+}
+
 async function findUserById(id) {
   const prisma = getPrismaClient();
   if (!prisma.user) {
@@ -429,6 +436,7 @@ const repository = {
   listOrders,
   upsertOrder,
   findOrderById,
+  updateOrderManufacturing,
   findUserById,
   createCustomerRegistrationIntent,
   findPendingCustomerRegistrationByEmail,

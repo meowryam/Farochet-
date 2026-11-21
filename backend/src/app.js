@@ -5,6 +5,7 @@ import productManagement, { createProductManagement } from "./business-logic/pro
 import inquiryManagement, { createInquiryManagement } from "./business-logic/inquiry/index.js";
 import orderManagement, { createOrderManagement } from "./business-logic/order/index.js";
 import availabilityManagement, { createAvailabilityManagement } from "./business-logic/availability/index.js";
+import statusManagement, { createStatusManagement } from "./business-logic/status/index.js";
 import pricingAndDiscountManagement from "./business-logic/pricing/index.js";
 import {
   authenticateRequest,
@@ -53,8 +54,12 @@ export function createApp({
       ? availabilityManagement
       : createAvailabilityManagement({ repository: dataRepository })
   );
+  const statuses = dataRepository === repository
+    ? statusManagement
+    : createStatusManagement({ repository: dataRepository });
   const orderRoutes = createOrderRoutes({
     orderManagement: orders,
+    statusManagement: statuses,
     authenticate,
     authenticateCustomer,
   });

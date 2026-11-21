@@ -159,3 +159,24 @@ _Add new slice entries below._
 - **Major issue/change:** The role-specific password and `DATABASE_URL` / `MIGRATION_DATABASE_URL` configuration status is not established by the later manual checks. Those checks do not constitute a complete database-configuration audit.
 - **Integration status:** Prisma config, template, security migration, tests, and docs are prepared locally; roles/schema grants were created earlier. The later manual verification of `can_set_migrator_role = false` confirms only the reported SET-membership state. Migration application and production deployment were not verified.
 - **Evidence link(s):** `backend/prisma.config.ts`; `backend/prisma/migrations/20261120000000_runtime_roles_and_rls/migration.sql`; `backend/tests/auth-profile-repository.test.js`; `docs/evidence/Testing_Evidence_Log.md`.
+
+### C2-M4 — Manufacturing Status Management
+
+- **Related PRD requirements:** FR-11, FR-14, FR-17.
+- **Owner:** Member 4.
+- **Plan version:** 1.7 (21 November 2026).
+- **Branch / Pull Request / merge:** `main` working tree; no commit or push.
+- **HITL / AFK mode:** AFK implementation under the current task instructions; no human decision made inside this chat.
+- **Reason for mode:** Existing status fields, migration and order routes provided a complete local vertical-slice contract; no shared schema or migration change was required.
+- **AI chat/task reference:** Current Copilot chat — Cycle 2 Member 4 Manufacturing Status Management.
+- **Context supplied to agent:** AGENTS.md, PRD.md, architecture.md, Guardrails.md, plan.md Cycle 2 Member 4, ADR-003, ADR-004, and the Farochet UI Kit guidelines/catalog/screen workflow.
+- **Acceptance criteria:** Raazia can set the approved manufacturing statuses and optional Estimated Completion Date; new confirmed Orders remain `Incomplete`; completed manufacturing does not alter payment or delivery; Customers see own status/estimate and `Not yet provided` when absent; cross-Customer access and update attempts are denied.
+- **Important iterations/corrections:** Added the approved Status Management Business Logic module and an order-status Repository operation. Added `PATCH /api/admin/orders/:id/status`; it updates only `manufacturingStatus` and/or `estimatedCompletionDate`. The Raazia-only route and role checks remain centralized in Middleware, with a defensive Raazia check in Status Management.
+- **Rejected/revised approach (if any):** Did not change the Prisma schema or migrations, create new status values, couple status fields, or expose direct database access from React.
+- **Tests/checks actually run:** Focused order tests; full backend Vitest/Supertest suite; frontend Vite production build; `git diff --check`; worktree status review.
+- **Actual results:** Focused order suite 11/11 passed; full backend 60/60 passed across 8 test files; frontend build passed with 101 modules and a >500 kB chunk advisory; no whitespace errors.
+- **Human decision:** Pending human Accept / Revise / Reject review.
+- **Decision reason:** Automated checks and build passed, but no live Supabase/PostgreSQL workflow or human UI acceptance was performed.
+- **Major issue/change:** No schema or migration change was needed because the existing confirmed-Order model already contains all required fields. Live persistence and browser acceptance remain pending.
+- **Integration status:** Implemented locally in the working tree; no commit or push.
+- **Evidence link(s):** `backend/tests/orders.test.js`; `docs/evidence/Testing_Evidence_Log.md`; `frontend/src/features/orders/OrderManagementPage.jsx`.

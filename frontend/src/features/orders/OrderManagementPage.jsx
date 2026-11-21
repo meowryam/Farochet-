@@ -6,8 +6,14 @@ import Alert from "../../components/ui/Alert";
 import Button from "../../components/ui/Button";
 import Card from "../../components/ui/Card";
 import EmptyState from "../../components/ui/EmptyState";
+import SelectField from "../../components/ui/SelectField";
+import TextField from "../../components/ui/TextField";
 import { useAuth } from "../../contexts/AuthContext";
-import { getAdminOrder, listAdminOrders } from "../../services/api";
+import {
+  getAdminOrder,
+  listAdminOrders,
+  updateAdminManufacturingProgress,
+} from "../../services/api";
 
 const ORDER_NAV_ITEMS = [
   { label: "Products", href: "/admin/products", key: "products" },
@@ -27,11 +33,21 @@ function formatPrice(amount) {
   return `PKR ${new Intl.NumberFormat("en-PK").format(amount)}`;
 }
 
+function toDateInputValue(value) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toISOString().slice(0, 10);
+}
+
 export default function OrderManagementPage() {
   const { signOut } = useAuth();
   const navigate = useNavigate();
   const [orders, setOrders] = useState([]);
   const [selectedOrder, setSelectedOrder] = useState(null);
+  const [manufacturingStatus, setManufacturingStatus] = useState("");
+  const [estimatedCompletionDate, setEstimatedCompletionDate] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -65,9 +81,35 @@ export default function OrderManagementPage() {
     setError("");
     setSelectedOrder(null);
     try {
-      setSelectedOrder(await getAdminOrder(id));
+      const order = await getAdminOrder(id);
+      setSelectedOrder(order);
+      setManufacturingStatus(order.manufacturingStatus);
+      setEstimatedCompletionDate(toDateInputValue(order.estimatedCompletionDate));
     } catch (detailError) {
       setError(detailError instanceof Error ? detailError.message : "Could not load order details.");
+    }
+  }
+
+  async function saveManufacturingProgress(event) {
+    event.preventDefault();
+    if (!selectedOrder) return;
+    setIsSaving(true);
+    setError("");
+    try {
+      const updated = await updateAdminManufacturingProgress(selectedOrder.id, {
+        manufacturingStatus,
+        estimatedCompletionDate: estimatedCompletionDate || null,
+      });
+      setSelectedOrder((current) => ({
+        ...(current ?? {}),
+        ...updated,
+      }));
+      setManufacturingStatus(updated.manufacturingStatus);
+      setEstimatedCompletionDate(toDateInputValue(updated.estimatedCompletionDate));
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : "Could not update manufacturing progress.");
+    } finally {
+      setIsSaving(false);
     }
   }
 
@@ -151,6 +193,35 @@ export default function OrderManagementPage() {
               <div><strong>Delivery status</strong><p>{selectedOrder.deliveryStatus ?? "Not yet recorded"}</p></div>
               <div><strong>Estimated Completion Date</strong><p>{formatDate(selectedOrder.estimatedCompletionDate)}</p></div>
             </div>
+            <form onSubmit={saveManufacturingProgress} className="catalogue-info-fields">
+              <SelectField
+                id={`manufacturing-status-${selectedOrder.id}`}
+                label="Manufacturing/order status"
+                value={manufacturingStatus}
+                onChange={(event) => setManufacturingStatus(event.target.value)}
+                options={[
+                  { value: "Incomplete", label: "Incomplete" },
+                  { value: "In Progress", label: "In Progress" },
+                  { value: "Completed", label: "Completed" },
+                  { value: "Cancelled", label: "Cancelled" },
+                  { value: "On Hold", label: "On Hold" },
+                ]}
+                required
+              />
+              <TextField
+                id={`estimated-completion-${selectedOrder.id}`}
+                label="Estimated Completion Date"
+                type="date"
+                value={estimatedCompletionDate}
+                onChange={(event) => setEstimatedCompletionDate(event.target.value)}
+                helpText="Optional estimate. A blank date displays “Not yet provided”."
+              />
+              <div className="catalogue-form-actions">
+                <Button type="submit" admin loading={isSaving} disabled={isSaving}>
+                  Save manufacturing progress
+                </Button>
+              </div>
+            </form>
           </Card>
         )}
       </div>
