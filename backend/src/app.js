@@ -5,8 +5,12 @@ import productManagement, { createProductManagement } from "./business-logic/pro
 import inquiryManagement, { createInquiryManagement } from "./business-logic/inquiry/index.js";
 import orderManagement, { createOrderManagement } from "./business-logic/order/index.js";
 import pricingAndDiscountManagement from "./business-logic/pricing/index.js";
-import { authenticateRequest } from "./presentation/middleware/authentication.js";
+import {
+  authenticateRequest,
+  createSupabaseIdentityVerification,
+} from "./presentation/middleware/authentication.js";
 import healthRoutes from "./presentation/routes/health.routes.js";
+import { createAuthRoutes } from "./presentation/routes/auth.routes.js";
 import { createProductRoutes } from "./presentation/routes/product.routes.js";
 import { createInquiryRoutes } from "./presentation/routes/inquiry.routes.js";
 import { createOrderRoutes } from "./presentation/routes/order.routes.js";
@@ -20,6 +24,7 @@ export function createApp({
   orderManagement: orderManagementOverride,
   authenticate = authenticateRequest,
   authenticateCustomer = authenticate,
+  verifyIdentity = createSupabaseIdentityVerification(),
 } = {}) {
   const app = express();
   const products = productManagementOverride ?? (
@@ -50,6 +55,11 @@ export function createApp({
   app.use(express.json());
 
   app.use("/api", healthRoutes);
+  app.use("/api/auth", createAuthRoutes({
+    authenticate,
+    verifyIdentity,
+    userRepository: dataRepository,
+  }));
   app.use(
     "/api/admin/products",
     createProductRoutes({ productManagement: products, authenticate }),

@@ -105,3 +105,57 @@ _Add new slice entries below._
 - **Major issue/change:** `customerId` is temporary and customer name/email are not shown until Member 2's User model is merged; the Inquiry migration and Prisma generation against the shared database are pending the coordinator.
 - **Integration status:** Pushed to main on 19 Nov 2026 as commit 61aa571. Migration pending the coordinator; customerId relation to User pending Member 2's User model.
 - **Evidence link(s):** `docs/evidence/Testing_Evidence_Log.md`.
+
+### C1-M2 - Authentication & Role Access
+
+- **Related PRD requirements:** NFR-01; prerequisite for protected slices (plan.md Cycle 1, Member 2).
+- **Owner:** Member 2.
+- **Plan version:** 1.4 (19 November 2026).
+- **Branch / Pull Request / merge:** `main` working tree; no commit or push.
+- **HITL / AFK mode:** HITL.
+- **Reason for mode:** Shared User schema/migration requires agreement by all four members; Member 2 authorized independent authentication implementation.
+- **AI chat/task reference:** Current Copilot chat — Cycle 1 Member 2 Authentication & Role Access.
+- **Context supplied to agent:** PRD v1.4, architecture, ADR-004/ADR-006, AGENTS.md, Guardrails.md, plan.md Cycle 1 Member 2, Farochet C-04/C-05/A-01.
+- **Acceptance criteria:** Supabase Auth identity tokens are verified by Express; persisted application role controls protected API access; `/api/auth/me` reports the persisted profile; Customer registration provisions only a verified identity's CUSTOMER profile; React session persistence/sign-out and role-protected routes work; public admin registration is unavailable.
+- **Important iterations/corrections:** Local Supabase URL and publishable key were placed in ignored per-app `.env` files; the publishable key is API configuration only, never proof of identity. Express verifies bearer tokens with Supabase Auth and uses the Repository for persisted roles. After four-member schema approval, added the User/role schema, Inquiry relation and migration; at the time of the earlier record, the migration was unapplied. The later manual checks do not establish current migration status. The four members then unanimously approved the narrow Auth Profile Provisioning interface and corresponding architecture exception; documentation records that Middleware's Repository exception remains lookup-only.
+- **Rejected/revised approach (if any):** Removed the temporary development-token login from Product/Inquiry screens. Did not add a tenth Business Logic component, public admin registration, client-controlled roles, or profile overwrite behavior. Initial new tests failed because their Express test harness lacked `express.json()` and then because the mocked Supabase responses were out of sequence; both test issues were fixed before the final test run.
+- **Tests/checks actually run:** Backend `npm test` using Node 26.13.1; frontend `npm run build`; Prisma generation/validation; live invalid-token probe and local Express smoke from the earlier auth stage; schema/migration and local `.env` behavior reviewed. The latest full backend result is 6 files / 32 tests passed.
+- **Actual results:** Auth routes and Repository profile-provisioning tests passed against mocked Supabase and Prisma in the earlier recorded run: 6 files / 32 tests. Prisma Client generation and schema validation passed. Final frontend build passed (96 modules) with Vite's >500 kB chunk advisory. `git diff --check` passed after removing newly introduced trailing whitespace. At that stage, live registration/login, database-backed profile lookup and migration were not run. Subsequent user-reported manual results are recorded below; they do not imply migration or production verification.
+- **Human decision:** User schema/migration agreement and Auth Profile Provisioning interface approval were confirmed; implementation review and slice acceptance remain pending with all four members.
+- **Decision reason:** The approved architecture exception is documented and locally tested. The later user-reported manual checks establish successful Customer/Raazia sign-in and profile access, but do not establish migration status or human acceptance.
+- **Major issue/change:** `POST /api/auth/profile` verifies the Supabase identity, accepts only display name, derives identity fields server-side, and uses a create-only Repository operation that assigns CUSTOMER and leaves existing profiles/roles unchanged. No Prisma application migration was applied in the earlier recorded status; the current manual tests do not establish later migration status.
+- **Integration status:** Authentication, Customer registration and profile provisioning are implemented locally; Customer/Raazia sign-in and role-specific access were subsequently reported as manually verified. Customer registration/sign-out, migration status, production deployment and human acceptance remain unverified.
+- **Evidence link(s):** `backend/tests/authentication.test.js`; `docs/evidence/Testing_Evidence_Log.md`.
+
+### C1-M2 manual authentication and permission checks
+
+- **Related requirements / decisions:** NFR-01; ADR-004 and ADR-006.
+- **Owner:** Member 2.
+- **Plan version:** 1.6 (21 November 2026).
+- **HITL / AFK mode:** HITL.
+- **AI chat/task reference:** User-reported manual checks in the current ChatGPT session.
+- **Test type / execution:** Manual checks performed by the user; reported in chat and not independently rerun during this documentation update. These results are not automated-test results.
+- **Checks and reported results:** (1) CUSTOMER sign-in and customer profile access — passed. (2) CUSTOMER attempted `/admin/sign-in` and received the expected access-denied result — passed. (3) A separate Supabase Auth identity for Raazia was created — passed. (4) Its matching `public.User` application profile with role `RAAZIA` was created and verified — passed. (5) Raazia sign-in — passed. (6) Farochet Admin workspace access — passed. (7) Temporary PostgreSQL SET membership was removed/restored to the restricted state; `can_set_migrator_role = false` was verified — passed.
+- **Limits:** These manual checks do not establish migration application, production deployment, a complete database-configuration audit, or automated authentication-test outcomes. Earlier automated test results remain separately documented and were not rerun for this update. No credentials or connection values are recorded here.
+- **Integration / remaining approval:** These checks do not replace the four-member migration review or human slice acceptance. No code, environment, database, or migration changes were made by this documentation update.
+
+### C1-M2 — Runtime and migration database-role separation
+
+- **Related PRD requirements:** NFR-01; ADR-004 and ADR-006 database/security boundaries.
+- **Owner:** Member 2.
+- **Plan version:** 1.4 (19 November 2026).
+- **Branch / Pull Request / merge:** `main` working tree; no commit or push.
+- **HITL / AFK mode:** HITL.
+- **Reason for mode:** Database role creation, permissions, and applying the new migration require explicit human approval; shared migration governance also applies.
+- **AI chat/task reference:** Current Copilot chat — runtime/migration database role implementation.
+- **Context supplied to agent:** Approved role direction; Supabase Postgres role metadata; current Prisma 7 config, Repository operations, routes, tests, connection mode, and team guardrails.
+- **Acceptance criteria:** Separate runtime and CLI URLs; runtime role is non-owner and lacks elevated attributes; migration role can own/create migration objects; direct Data API roles receive no business-table access; grants match implemented Repository operations; customer ownership remains in Business Logic.
+- **Important iterations/corrections:** Confirmed the live current connection was the `postgres` database role with `BYPASSRLS`, while application tables and both custom role names were absent. Configured Prisma CLI to read `MIGRATION_DATABASE_URL`; Repository continues to use `DATABASE_URL`. After explicit user approval, created both roles and the approved database/schema grants; at that time, the `.env` was not changed because the roles still needed secure passwords.
+- **Rejected/revised approach (if any):** No `service_role` DML grant, Product `DELETE`, `FORCE ROW LEVEL SECURITY`, runtime table ownership, or client-supplied profile role. Existing product archive remains an `UPDATE`.
+- **Tests/checks actually run:** Node 26.13.1 backend `npm test`; Prisma Client generation and schema validation (using a nonconnecting dummy migration URL for local CLI validation); frontend production build; `git diff --check`.
+- **Actual results:** 6 backend test files / 32 tests passed; Prisma 7.10.1 generation and schema validation passed; Vite production build passed (96 modules); whitespace check passed. The approved SQL created the database roles and schema grants; no Prisma application migrations were executed.
+- **Human decision:** User approved the exact role-creation SQL and action sequence. Team review of the shared security migration remains pending.
+- **Decision reason:** Role DDL was executed only after explicit approval. The later manual checks do not establish the current password or role-specific URL configuration; no such values are recorded here. `psql.exe` is available at `C:\Program Files\PostgreSQL\19\bin\psql.exe`; this documentation update did not run password-setting commands or migrations.
+- **Major issue/change:** The role-specific password and `DATABASE_URL` / `MIGRATION_DATABASE_URL` configuration status is not established by the later manual checks. Those checks do not constitute a complete database-configuration audit.
+- **Integration status:** Prisma config, template, security migration, tests, and docs are prepared locally; roles/schema grants were created earlier. The later manual verification of `can_set_migrator_role = false` confirms only the reported SET-membership state. Migration application and production deployment were not verified.
+- **Evidence link(s):** `backend/prisma.config.ts`; `backend/prisma/migrations/20261120000000_runtime_roles_and_rls/migration.sql`; `backend/tests/auth-profile-repository.test.js`; `docs/evidence/Testing_Evidence_Log.md`.

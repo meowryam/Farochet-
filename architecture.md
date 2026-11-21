@@ -120,7 +120,7 @@ The architecture also addresses the following PRD requirements:
 
 | NFR | Requirement | Architectural response |
 |---|---|---|
-| NFR-01: Basic Access Control | Enforce Customer and Raazia roles and prevent customers from accessing each other's restricted records or Raazia-only actions. | Centralized Controller Middleware; authenticated user identity is passed through the application for customer-specific ownership enforcement. |
+| NFR-01: Basic Access Control | Enforce Customer and Raazia roles and prevent customers from accessing each other's restricted records or Raazia-only actions. | Centralized Controller Middleware; authenticated user identity is passed through the application for customer-specific ownership enforcement. Customer profile creation requires the approved verified-identity-bound registration intent. |
 | NFR-02: Basic Data Persistence | Wishlist, inquiry, order, price, payment, and delivery records remain available after closing and reopening the application. | Persistent centralized relational data store accessed through the Repository. |
 | NFR-03: Essential Data Integrity | Preserve independent order/payment/delivery statuses and fixed whole-PKR public-sale discount calculation. | Separate logical status values and distinct pricing responsibilities; business rules are handled in the Business Logic Layer. |
 | NFR-04: Basic Usability for Core Tasks | Raazia can complete agreed core tasks through the interface without directly editing the database or application code. | Presentation Layer provides the user-facing screens and request flows; direct database or code editing is not part of normal operation. |
@@ -246,15 +246,57 @@ Responsibilities:
 
 -   Receive requests from the user interface.
 -   Validate request structure and basic input formatting.
--   Invoke the relevant Business Logic component through its defined
-    interface.
+-   Ordinary Controllers invoke the relevant Business Logic component
+    through its defined interface. Auth Profile Provisioning follows
+    only the explicitly approved exception below.
 -   Return business results to the Presentation Layer for display.
 
 Boundary:
 
 -   Controllers do not contain the substantive pricing, order,
     negotiation, or status business rules.
--   Controllers do not access the database directly.
+-   Ordinary Controllers do not access the Repository or database
+    directly.
+-   The Auth Profile Provisioning Controller has only the separate,
+    narrowly scoped Repository exception defined below.
+
+#### Auth Profile Provisioning Controller — approved exception
+
+Customer signup is initiated through `POST /api/auth/register`. The
+backend validates the registration request and creates a new Supabase
+Auth identity through the Auth Admin API using a server-only credential.
+The backend stores a `CustomerRegistrationIntent` only after Supabase
+returns the newly created identity ID and canonical email. A duplicate
+identity receives the same generic response as a successful request and
+does not receive an intent. Signup does not create an application `User`
+profile. The service-role credential is never sent to the browser or
+used to access application tables.
+
+If Supabase requires email confirmation, the backend requests the
+provider's configured signup confirmation. After sign-in, identity
+verification Middleware verifies the bearer token and attaches the
+verified Supabase user ID, email, and email-confirmation timestamp. The
+`POST /api/auth/registration/activate` Controller asks the Repository to
+activate only the intent bound to that verified identity. The first
+verified request with a confirmed email starts a fixed 30-minute
+completion period; repeated activation does not extend it.
+
+The `POST /api/auth/profile` Controller accepts an empty body and invokes
+the Repository's atomic completion operation using only the verified
+identity. The Repository conditionally consumes the matching, unexpired,
+single-use intent and creates the application `User` in one database
+transaction. The intent's stored display name is used; the Repository
+assigns `CUSTOMER`. Existing profiles and roles are returned unchanged,
+including `RAAZIA`; missing, mismatched, expired, and consumed intents
+are rejected. Client-supplied identity, email, role, or display name
+cannot authorize completion.
+
+This unanimous amendment is limited to the signup, activation, and
+atomic completion operations described above. Middleware's Repository
+access remains limited to account/role lookup. It does not permit
+general Controller-to-Repository access or add a User Management
+Business Logic component; the existing nine Business Logic components
+remain unchanged.
 
 #### Centralized Access Control / Controller Middleware
 
@@ -282,12 +324,14 @@ Boundary:
     performs persistence operations requested by Business Logic; it is
     not an authorization boundary and does not independently decide
     record ownership.
--   **Narrowly scoped layer-boundary exception:** ADR-004 explicitly
-    requires this centralized Middleware to use the Repository for
-    persisted User account and role lookup. This is the only direct
-    Presentation-to-Data Access dependency. Views and ordinary
-    Controllers do not access the Repository or database, and no other
-    Presentation component may use this exception.
+-   **Narrowly scoped layer-boundary exceptions:** ADR-004 requires
+    centralized Middleware to use the Repository for persisted User
+    account and role lookup. The unanimously approved registration
+    amendment permits the Auth Profile Provisioning Controller to use
+    only the registration-intent and atomic profile-completion operations
+    for its defined signup routes. Views and ordinary Controllers do not
+    access the Repository or database, and no other Presentation
+    component or Repository operation may use either exception.
 
 **Related ADR:** [ADR-004 --- Centralized Access Control and
 Authorization
@@ -528,11 +572,18 @@ Responsibilities:
     business components.
 -   Apply customer-specific record filtering using the authenticated
     user ID passed through the application.
+-   Persist pending Customer registration intents and provide the
+    narrowly approved create, activate, resend-lookup, and atomic
+    consume/profile operations used by the Auth Profile Provisioning
+    Controller. Assign `CUSTOMER` in the Repository and leave any
+    existing profile unchanged.
 
 Boundary:
 
 -   Business Logic components access persistence through the Repository.
--   Presentation components do not access the database directly.
+-   Presentation access is prohibited except for Middleware's User
+    account/role lookup and the narrowly scoped Customer registration
+    and profile-completion operations approved in ADR-004.
 -   The Repository does not become a second, independent
     role-authorization system.
 
@@ -561,6 +612,10 @@ Inquiries](./ADR/%23%20ADR-002%20Data%20Persistence%20and%20Separation%20for%20P
 -   No View or Controller accesses the database directly.
 -   The centralized Access Control Middleware is the request-boundary
     authentication and role-based authorization mechanism.
+-   The only Controller-to-Repository calls outside Business Logic are
+    the approved Customer registration-intent operations; identity
+    verification occurs in Middleware and profile creation/intent
+    consumption are atomic in the Repository.
 -   The Repository persists and retrieves account and role information
     represented by the shared `User` entity. Middleware uses that
     information for authentication and authorization and passes the
@@ -587,8 +642,8 @@ programming-language method names, API routes, or technology.
 | Presentation component | Logical operations / responsibilities |
 |---|---|
 | Views / User Interface | Display catalogue and product details; submit inquiries and custom-order requests; display permitted customer records; display wishlist and Order information; provide Raazia-facing management and reporting screens. |
-| Controllers | Receive and validate requests; invoke the appropriate Business Logic operation; return results for presentation. |
-| Access Control Middleware | Authenticate the request; retrieve account/role information as needed through the Repository under the ADR-004 exception; apply role-based authorization; pass authenticated user ID to Business Logic operations. |
+| Controllers | Receive and validate requests; invoke the appropriate Business Logic operation; return results for presentation. The Auth Profile Provisioning Controller may call only the approved registration-intent persistence operations for `/api/auth/register`, `/api/auth/registration/activate`, and `/api/auth/profile`. |
+| Access Control Middleware | Verify Supabase identity; for protected application operations retrieve persisted account/role through the ADR-004 Repository exception; apply role-based authorization; pass authenticated user ID to Business Logic operations. For registration activation/completion it attaches verified ID, email, and email-confirmation timestamp without querying the Repository. |
 
 ### 5.2 Business component interfaces
 
@@ -786,11 +841,14 @@ Ownership and timing:
 
 ### 5.4 Persistence interaction
 
--   As the explicit, narrowly scoped exception required by ADR-004,
-    Controller Middleware uses the Repository interface to retrieve
+-   Controller Middleware uses the Repository only to retrieve
     persisted User account and role information for authentication and
-    role-based authorization. No View or ordinary Controller accesses
-    the Repository.
+    role-based authorization.
+-   For the approved Auth Profile Provisioning routes, identity-
+    verification Middleware verifies Supabase access tokens and the
+    Controller invokes only the corresponding registration-intent
+    Repository operations. Profile creation and intent consumption are
+    atomic. No View or ordinary Controller accesses the Repository.
 -   Business Logic components request persistence operations from the
     centralized Repository for the records they own.
 -   The Repository performs the corresponding operations against the
@@ -993,6 +1051,10 @@ Sales Summary follows FR-18:
 -   Controller Middleware uses the Repository interface to retrieve
     persisted User account and role information for authentication and
     role-based authorization.
+-   The Auth Profile Provisioning Controller uses only the Repository's
+    approved create/activate/resend-lookup/atomic-completion operations
+    for the backend-controlled signup and verified profile-completion
+    flow.
 -   Business Logic components access the persistent records they own
     through the centralized Repository.
 -   The authenticated user ID is passed through the application from the
@@ -1049,11 +1111,14 @@ connect to external services to perform them automatically.
 2.  **MVC placement:** Use MVC within the Presentation Layer only. Do
     not move business rules into the presentation-level Model.
 3.  **Presentation access boundary:** Views and ordinary Controllers
-    must not access the Repository or database. The sole narrowly scoped
-    exception is centralized Controller Middleware retrieving persisted
-    User account and role information through the Repository, as
-    explicitly required by ADR-004. No other Presentation component may
-    use this exception.
+    must not access the Repository or database. The two approved,
+    narrowly scoped exceptions are: (a) centralized Controller
+    Middleware retrieving persisted User account and role information
+    under ADR-004; and (b) the Auth Profile Provisioning Controller
+    invoking only the approved Customer registration-intent operations
+    for backend-controlled signup, verified activation, and atomic
+    profile completion. No other Presentation component or Repository
+    operation may use these exceptions.
 4.  **Centralized persistence:** Business components use the centralized
     Repository and relational database.
 5.  **Centralized access control:** Use the centralized Controller
@@ -1117,9 +1182,12 @@ PendingOrderRequest traceability chain, and the three independent
 status attributes within Order. Logical record nodes inside the database
 cluster describe accepted traceability only; they do not prescribe
 additional physical tables beyond the relational model already selected.
-The Middleware-to-Repository edge is the narrowly scoped User account
-and role lookup exception required by ADR-004; it is not a general
-Presentation-to-Data Access dependency.
+The Middleware-to-Repository edge is limited to User account and role
+lookup under ADR-004. The Controller-to-Repository edge is limited to
+the unanimously approved Customer registration-intent operations for
+`POST /api/auth/register`, `/api/auth/registration/activate`, and
+`/api/auth/profile`; profile creation and intent consumption are atomic.
+Neither is a general Presentation-to-Data Access dependency.
 
 ``` mermaid
 flowchart TB
@@ -1159,6 +1227,7 @@ flowchart TB
     end
 
     AC -->|"User account and role lookup"| REP
+    C -->|"Customer registration-intent and atomic profile operations"| REP
     AC -->|"Authorized request + authenticated user ID"| PROD
     AC --> AVAIL
     AC --> PRICE
@@ -1247,7 +1316,7 @@ record below. The links preserve the filenames as they appear in the archive.
 | [ADR-001 — Overall Architectural Style](./ADR/%23%20ADR-001%20Overall%20Architectural%20Style.md) | Multi-Tier architecture and MVC | Sections 3, 4, 8, and 9; MVC is limited to Presentation. | Accepted |
 | [ADR-002 — Data Persistence and Separation for Pricing and Inquiries](./ADR/%23%20ADR-002%20Data%20Persistence%20and%20Separation%20for%20Pricing%20and%20Inquiries.md) | Relational persistence, separate Inquiry/Order data, and pricing | Sections 4, 5, 6, and 8; Negotiated Price snapshot timing and direct Order-to-Inquiry reference are incorporated. | Accepted |
 | [ADR-003 — Independent Status Management for Orders](./ADR/%23%20ADR-003%20Independent%20Status%20Management%20for%20Orders.md) | Independent manufacturing/order, payment, and delivery statuses | Sections 4, 5, 6, 8, and 9; Option A is represented as three independent Order attributes. | Accepted |
-| [ADR-004 — Centralized Access Control and Authorization Boundary](./ADR/%23%20ADR-004%20Centralized%20Access%20Control%20and%20Authorization%20Boundary.md) | Centralized request-boundary authentication and authorization | Sections 4, 5, 6, 8, and 9; middleware uses the Repository only for User account/role lookup, while Business Logic enforces customer-specific ownership. | Accepted |
+| [ADR-004 — Centralized Access Control and Authorization Boundary](./ADR/%23%20ADR-004%20Centralized%20Access%20Control%20and%20Authorization%20Boundary.md) | Centralized request-boundary authentication and authorization | Sections 4, 5, 6, 8, and 9; Middleware uses the Repository only for User account/role lookup; the unanimously approved backend-controlled Customer signup intent is verified and consumed atomically with profile creation; Business Logic enforces customer-specific ownership. | Accepted; Customer registration-intent amendment unanimously approved by the four-member team |
 | [ADR-005 — Resolution of Implementation Gaps](./ADR/ADR-005%20Resolution%20of%20Implementation%20Gaps.md) | Append-only negotiation history, fixed public-sale discount, and initial payment/delivery status values | Sections 5, 6, and 11; resolves the previously recorded implementation gaps. | Accepted as implementation baseline |
 | [ADR-006 — Approved Implementation Technology Stack](./ADR/ADR-006-Approved-Implementation-Technology-Stack.md) | D4 implementation technologies and integration boundaries | Implements, but does not replace, the approved layers, components, Repository and database boundary. | Accepted for D4 implementation |
 

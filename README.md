@@ -27,7 +27,7 @@ The stack is recorded in [`ADR-006`](./ADR/ADR-006-Approved-Implementation-Techn
 | Testing | Vitest + Supertest |
 | Initial execution | Local frontend and backend; Supabase-hosted data/auth/storage |
 
-**Architecture is not changing:** React → Express Controllers/Middleware → the nine Business Logic components → one centralized Repository (Prisma) → one PostgreSQL database. MVC remains within Presentation only. Supabase must not replace the Express backend or the approved Business Logic/Repository boundaries.
+**The layered architecture and nine Business Logic components remain unchanged:** React → Express Controllers/Middleware → Business Logic → the centralized Repository (Prisma) → one PostgreSQL database. The approved narrow exceptions are Middleware's persisted account/role lookup and the designated Auth Controllers' registration-intent persistence/activation and atomic profile-completion operations. MVC remains within Presentation only. Supabase must not replace the Express backend or the approved Business Logic/Repository boundaries.
 
 ## Start here
 
@@ -90,11 +90,18 @@ npm run dev
 
 - Frontend: http://localhost:5173
 - Backend health check: http://localhost:5000/api/health
-- The Bootstrap page calls the configured `VITE_API_BASE_URL` (default `http://localhost:5000/api`).
+- The frontend uses `VITE_API_BASE_URL` for Express requests (default `http://localhost:5000/api`).
+- For Supabase Auth, set `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` in `frontend/.env`; set the matching `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY` in `backend/.env`. These are public project configuration values, not proof of identity. Never put a Supabase secret/service-role key in the frontend.
+
+### Authentication & Customer Registration (Cycle 1 — Member 2)
+
+Customers can create an account at `/register` and sign in at `/sign-in`. Supabase Auth verifies credentials and stores passwords; the application does not store passwords. The backend creates a pending registration intent only after Supabase Auth Admin confirms a newly created identity. When email confirmation is enabled, the backend explicitly requests a signup confirmation email. After confirmation, sign in and use the Customer setup continuation; the backend verifies the identity and confirmed-email timestamp before starting the 30-minute window. `/api/auth/profile` accepts an empty body and creates a CUSTOMER profile only by atomically consuming the matching, unexpired intent. Normal sign-in/session restoration are read-only, and existing profiles/roles are never overwritten. Public Raazia/admin registration is not available.
+
+Protected API requests send a Supabase access token to Express. Middleware verifies it with Supabase Auth, then loads the application role from the persisted `User` profile. The frontend role guards improve navigation only; backend middleware is authoritative.
 
 ### Product Catalogue Administration (Cycle 1 — Member 1)
 
-The admin screen is available at `http://localhost:5173/admin/products`. Set a private `DEV_RAAZIA_TOKEN` value in `backend/.env`; enter that same value in the screen to connect. The server assigns the `RAAZIA` role and does not accept a client-supplied role or user ID. Never configure the mock token in production.
+The admin sign-in screen is available at `http://localhost:5173/admin/sign-in`; protected Product and Inquiry pages require a persisted `RAAZIA` profile. Until the User migration is applied and an authorized profile is provisioned, sign-in cannot grant application access. No public admin registration is provided.
 
 The Product model stores `basePrice` as the Standard Catalogue Price in whole PKR rupees. Public discounts are not stored on Product; discount behavior remains separate and follows the fixed shared-discount rule. Product removal archives the row (`isArchived`) rather than deleting it. Product image entries are existing references only; this slice does not upload images or choose a storage provider. No product-availability state is introduced.
 
@@ -122,10 +129,11 @@ Never commit `.env`, database passwords, Supabase service-role keys, access toke
 Bootstrap does not establish a live database connection because Supabase credentials are not configured in this working tree. To complete this step later:
 
 1. Create/select the Supabase project and secure the credentials outside chat and Git.
-2. Put the Session Pooler PostgreSQL URL (port 5432) in `backend/.env` as `DATABASE_URL`, plus the approved server-side Supabase values.
-3. Put only the public Supabase URL/anon key in `frontend/.env` when Auth work begins.
-4. Run `npm run prisma:generate` from `backend/`.
-5. Add remaining business models/migrations only after the approved contracts are reviewed. The project coordinator/schema steward applies migrations to the shared Supabase database; do not run migrations against a shared database without approval.
+2. Create the approved `farochet_runtime` and `farochet_migrator` PostgreSQL roles using the administrator procedure. The Express role must not own application tables or have `BYPASSRLS`; the migration role owns objects it creates and has only `USAGE, CREATE` on `public`.
+3. Put the Session Pooler PostgreSQL URL (port 5432) for `farochet_runtime` in backend `.env` as `DATABASE_URL`, and the URL for `farochet_migrator` as `MIGRATION_DATABASE_URL`. Keep both URLs and passwords backend-only. `DIRECT_URL` is not used by the Prisma config.
+4. Put only the public Supabase URL and publishable/anon key in `frontend/.env`. The browser uses that public key only to access Supabase Auth; it is never proof of a user's identity.
+5. Run `npm run prisma:generate` from `backend/`. Use `npm run prisma:deploy` to apply reviewed committed migrations with the migration role. `npm run prisma:migrate` (`migrate dev`) is for local migration development and may require a separate shadow database.
+6. Add remaining business models/migrations only after all four team members agree on the shared contract. A team member may apply the reviewed migration after that agreement and database access is configured; do not run concurrent migrations against the shared Supabase database.
 
 Prisma note: the backend uses Prisma 7's current `prisma-client` generator. It emits TypeScript into `backend/src/generated/prisma`, which is ignored by Git and regenerated by `npm ci`/`npm run prisma:generate`. Node 26 strips the generated types at runtime, so no separate transpilation step is required. The centralized Repository imports `PrismaClient` from the generated `client.ts`; `@prisma/client` remains the runtime package. Do not import the generated client outside the Repository.
 

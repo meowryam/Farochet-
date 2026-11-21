@@ -8,7 +8,7 @@
 
 **Source baseline reviewed:** PRD Version 1.4; consolidated `architecture.md`; accepted ADR-001 through ADR-006; existing `AGENTS.md`
 
-**Status note:** The group has reviewed and approved the consolidated architecture. ADR-001 through ADR-005 remain the accepted architecture/business-rule baseline; ADR-006 selects the D4 implementation stack by project-coordinator decision. This status does not imply TA or faculty approval.
+**Status note:** The group has reviewed and approved the consolidated architecture. ADR-001 through ADR-005 remain the accepted architecture/business-rule baseline; ADR-006 selects the D4 implementation stack by project-coordinator decision. The four-member team has unanimously approved the backend-controlled Customer registration-intent amendment to ADR-004, including its 30-minute activation window and atomic single-use consumption. This status does not imply TA or faculty approval.
 
 ---
 
@@ -141,17 +141,17 @@ Each guardrail below states the boundary, its rationale, the risk it prevents, t
 
 - **Authoritative source:** `architecture.md`, Sections 4.1 and 6.9; `AGENTS.md`, Sections 4.2 and 4.5.
 
-### 3.8 Keep the Middleware-to-Repository exception narrow
+### 3.8 Keep approved Presentation-to-Repository exceptions narrow
 
-- **Guardrail:** Centralized Controller Middleware may use the Repository only to retrieve persisted User account and role information needed for authentication and role identification. This is the sole documented direct Presentation-to-Data Access exception.
+- **Guardrail:** Centralized Middleware may use the Repository only to retrieve persisted User account and role information. The unanimously approved Auth Profile Provisioning exception permits only the backend-controlled signup, pending-intent persistence/activation, and atomic profile-completion operations on their designated routes. The Auth Admin service-role credential remains backend-only and is used only for Supabase Auth Admin operations in this flow; it does not access application tables.
 
-- **Why it exists:** ADR-004 explicitly places account/role lookup at the centralized request boundary while retaining customer-record ownership decisions in Business Logic.
+- **Why it exists:** ADR-004 places account/role lookup at the centralized request boundary. Its approved amendment establishes genuine Customer registration through a new Supabase identity, an identity-bound intent, verified email confirmation, fixed 30-minute activation, and atomic one-time profile creation without adding a tenth Business Logic component. Customer-record ownership decisions remain in Business Logic.
 
-- **Risk prevented:** Broadening a narrow security lookup into general Presentation-layer database access or moving ownership authorization into the Repository.
+- **Risk prevented:** Broadening narrow exceptions into general Presentation-layer database access, trusting client-controlled identity/roles or navigation state, creating Customer profiles for existing Auth identities, overwriting an existing profile, reusing an intent, or moving business ownership authorization into the Repository.
 
-- **Required agent behaviour:** Restrict Middleware's Repository use to User account/role lookup. Do not extend it to inquiries, quotations, orders, wishlists, or general business data. Do not create a separate User Management Business Logic component or authentication service unless separately approved.
+- **Required agent behaviour:** Middleware's Repository use remains limited to User account/role lookup. Signup identity IDs/emails come from the Supabase Auth Admin response and continuation IDs/emails come from a verified Supabase bearer identity. The Repository stores the validated display name with the intent, assigns `CUSTOMER` only during atomic completion, and never changes an existing profile or role. Normal sign-in/session restoration remain read-only. Do not extend the exception to inquiries, quotations, orders, wishlists, or general business data. Do not create a separate User Management Business Logic component or authentication service.
 
-- **Authoritative source:** ADR-004 (Accepted); `architecture.md`, Sections 4.1 and 6.9; `AGENTS.md`, Sections 4.5 and 6.
+- **Authoritative source:** ADR-004 and its unanimously approved registration-intent amendment; `architecture.md`, Sections 4.1 and 6.9; `AGENTS.md`, Sections 4.5, 6.1 and 6.1.1.
 
 ### 3.9 Do not make unauthorized architecture changes
 

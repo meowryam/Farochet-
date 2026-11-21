@@ -102,7 +102,7 @@ When sources appear to conflict:
 Specific known interpretation:
 - ADR-001 places MVC within Presentation only.
 - ADR-004 requires the centralized Middleware to retrieve persisted User account and role information through the Repository.
-- Therefore, the Middleware has one narrow Presentation-to-Data Access exception. The ordinary Views and Controllers remain prohibited from Repository/database access.
+- The four-member team unanimously approved the backend-controlled Customer registration-intent exception: Supabase Auth Admin creates a new identity on the backend, the Repository persists/activates its short-lived intent, and verified profile completion consumes that intent atomically with `User` creation. Middleware's Repository use remains limited to role lookup; ordinary Views and Controllers remain prohibited from Repository/database access.
 - The supporting alternatives PDF contains broader early-stage descriptions of MVC and layer interactions. Follow the more precise accepted ADRs and consolidated architecture where that supporting wording is broader or inconsistent.
 
 ### 2.5 Relationship with Guardrails.md
@@ -175,7 +175,7 @@ Rules:
 - Views MUST NOT access the Repository or database.
 - Ordinary Controllers MUST NOT access the Repository or database.
 - Controllers MUST NOT implement substantive pricing, discount, negotiation, order, cancellation, or status business rules.
-- Controllers MUST call the appropriate Business Logic component through its defined logical interface.
+- Ordinary Controllers MUST call the appropriate Business Logic component through its defined logical interface. The Auth Profile Provisioning Controller is limited to the explicit exception in Section 4.5.
 
 ### 4.3 Business Logic Layer
 
@@ -207,6 +207,7 @@ Responsibilities:
 - Centralize database interaction.
 - Support persistence requested by Business Logic components.
 - Provide the narrow User account/role lookup required by Middleware under ADR-004.
+- Provide the approved Customer registration-intent create/lookup/activate operations and atomic intent-consumption/profile-creation operation used by the Auth Profile Provisioning Controller.
 
 Rules:
 
@@ -216,7 +217,7 @@ Rules:
 - Repository query scoping may limit retrieved rows using supplied identifiers, but the relevant Business Logic component remains responsible for deciding whether the authenticated customer owns/is permitted to access the requested business record.
 - Do not create separate databases or repositories for individual components.
 
-### 4.5 Dependency rules and the ADR-004 exception
+### 4.5 Dependency rules and approved security exceptions
 
 The ordinary dependency direction is:
 
@@ -224,17 +225,23 @@ The ordinary dependency direction is:
 
 The centralized Middleware sits at the Presentation request boundary and intercepts inbound requests before Business Logic.
 
-**Narrow exception:** Middleware MAY use the Repository solely to retrieve persisted User account and role information required to authenticate the request and identify the Customer/Raazia role. This is explicitly required by ADR-004 and is the only documented direct Presentation-to-Data Access dependency.
+**Middleware exception:** Middleware MAY use the Repository solely to retrieve persisted User account and role information required to authenticate the request and identify the Customer/Raazia role. This is explicitly required by ADR-004.
 
-This exception MUST NOT be extended to:
+**Approved backend-controlled Customer registration exception:** `POST /api/auth/register` MUST create users through Supabase Auth Admin on the backend using the backend-only service-role credential. A pending `CustomerRegistrationIntent` is created only after Auth Admin returns a genuinely new Supabase identity; duplicate responses MUST be generic and MUST NOT create an intent. The request's email/password are signup inputs to Supabase, not trusted application identity fields. The intent stores the provider-returned user ID/email and the validated display name; no application `User` profile is created at signup.
+
+For `POST /api/auth/registration/activate` and `POST /api/auth/profile`, identity-verification Middleware MUST verify the bearer token and attach the verified Supabase user ID, email, and email-confirmation timestamp without querying the Repository. Activation MUST require the verified email-confirmed identity and start the fixed 30-minute expiry only once. Profile completion MUST accept no client-supplied identity, email, role, or display name; the Repository MUST atomically consume the matching, unexpired intent and create the `CUSTOMER` profile in one transaction. Replays, mismatches, expired/missing intents MUST be rejected. Existing profiles and roles, including `RAAZIA`, MUST never be overwritten.
+
+These are narrow route-specific exceptions, not general Controller-to-Repository access. Normal sign-in and session restoration MUST remain read-only with respect to profile provisioning. The existing nine Business Logic components remain unchanged.
+
+These exceptions MUST NOT be extended to:
 
 - Views.
 - Ordinary Controllers.
 - General-purpose business data retrieval.
 - Customer inquiry/order/wishlist ownership decisions.
-- Other Presentation components.
+- Other Presentation components or Repository operations.
 
-Do not introduce a separate User Management Business Logic component or a new authentication service. No such component/service has been accepted.
+Do not introduce a separate User Management Business Logic component or a new authentication service. The nine approved Business Logic components remain unchanged.
 
 ### 4.6 Logical component communication
 
@@ -449,6 +456,18 @@ Middleware MUST:
 4. Enforce role-based authorization centrally.
 5. Reject requests not permitted for the authenticated role.
 6. Pass the authenticated user ID to relevant Business Logic operations.
+
+### 6.1.1 Customer profile provisioning
+
+- Supabase Auth owns credential verification; application role lookup remains database-backed and separate.
+- `POST /api/auth/register` is the only public signup route. It MUST use backend-only Supabase Auth Admin creation and MUST create a pending intent only for a newly created provider identity. It MUST preserve the project's email-confirmation setting and return the same generic response for duplicate signup attempts.
+- The intent binds provider-returned Supabase user ID/email to a validated display name. It remains `PENDING` until Middleware verifies the user's email-confirmed identity on `POST /api/auth/registration/activate`.
+- Activation MUST start a 30-minute expiry once; repeated activation MUST NOT extend it.
+- `POST /api/auth/profile` MUST require the verified identity to match an active, unexpired, unconsumed intent and MUST atomically consume the intent while creating the `User` profile.
+- The Repository fixes new profiles to `CUSTOMER`. Client-supplied identity, email, or role MUST NOT be trusted. Existing application profiles and roles, including `RAAZIA`, MUST remain unchanged.
+- Normal sign-in and session restoration MUST only retrieve profiles. A missing profile MUST NOT trigger provisioning through either path.
+- These route-specific persistence operations MUST NOT add a Business Logic component or broaden Middleware's Repository exception.
+- `GET /api/auth/me` and other protected application routes continue to require a persisted profile and role.
 
 Do not introduce decentralized, inconsistent role authorization as a replacement for Middleware.
 
@@ -965,6 +984,7 @@ Never claim a test passed unless it was actually executed and passed. If tests c
 | Initial payment status | **Resolved by ADR-005** | NULL until manually recorded; display `Not yet recorded`. |
 | Initial delivery status | **Resolved by ADR-005** | NULL until Raazia records `Delivered`; display `Not yet recorded`. |
 | Implementation stack | **Resolved by ADR-006** | Node.js 26 LTS; React + Vite + JS; Express 5; Supabase PostgreSQL/Auth/Storage; Prisma 7 stable; npm; Vitest + Supertest; local app execution. Follow ADR-006 boundaries. |
+| Customer registration-intent boundary | **Approved by unanimous four-member decision** | Backend-only Supabase Auth Admin creates new identities; `CustomerRegistrationIntent` binds provider-returned ID/email; verified email confirmation activates a 30-minute intent; atomic single-use consumption creates `CUSTOMER`; existing roles are unchanged; exactly nine Business Logic components remain. |
 | Additional major technology/provider/deployment change | **Not approved** | Obtain project-coordinator approval and update the relevant ADR before introduction. |
 
 ### 17.1 Accepted decisions—do not reopen
@@ -1044,6 +1064,7 @@ Where applicable, verify:
 - Business Logic enforces ownership.
 - Repository does not independently make authorization decisions.
 - Middleware's Repository exception is limited to persisted User account/role lookup.
+- The Auth Profile Provisioning Controller exceptions are limited to the approved backend signup, identity-verified intent activation, and atomic profile-completion operations; the Repository creates CUSTOMER profiles only and never overwrites existing profiles or roles.
 - Views and ordinary Controllers do not access Repository/database.
 
 ### 19.3 Pricing and delivery tests

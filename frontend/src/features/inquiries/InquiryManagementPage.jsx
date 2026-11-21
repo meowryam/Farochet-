@@ -1,17 +1,15 @@
 import { useCallback, useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import AdminShell from "../../components/layout/AdminShell";
 import PageHeader from "../../components/layout/PageHeader";
 import Alert from "../../components/ui/Alert";
 import Button from "../../components/ui/Button";
 import Card from "../../components/ui/Card";
 import EmptyState from "../../components/ui/EmptyState";
-import TextField from "../../components/ui/TextField";
+import { useAuth } from "../../contexts/AuthContext";
 import {
-  clearAdminToken,
   getAdminInquiry,
-  getAdminToken,
   listAdminInquiries,
-  saveAdminToken,
 } from "../../services/api";
 
 const INQUIRY_NAV_ITEMS = [
@@ -29,8 +27,8 @@ function formatDate(value) {
 }
 
 export default function InquiryManagementPage() {
-  const [token, setToken] = useState(() => getAdminToken());
-  const [tokenInput, setTokenInput] = useState("");
+  const { signOut } = useAuth();
+  const navigate = useNavigate();
   const [inquiries, setInquiries] = useState([]);
   const [selectedInquiry, setSelectedInquiry] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -50,33 +48,17 @@ export default function InquiryManagementPage() {
   }, []);
 
   useEffect(() => {
-    if (token) void loadInquiries();
-  }, [loadInquiries, token]);
+    void loadInquiries();
+  }, [loadInquiries]);
 
-  function connectLocalSession(event) {
-    event.preventDefault();
-    const nextToken = tokenInput.trim();
-    if (!nextToken) {
-      setError("Enter the local Raazia token configured in backend/.env.");
-      return;
-    }
-
-    try {
-      saveAdminToken(nextToken);
-      setToken(nextToken);
-      setTokenInput("");
-      setError("");
-    } catch {
-      setError("The browser could not save this session token. Check session storage permissions.");
-    }
-  }
-
-  function disconnectLocalSession() {
-    clearAdminToken();
-    setToken("");
-    setInquiries([]);
-    setSelectedInquiry(null);
+  async function endSession() {
     setError("");
+    try {
+      await signOut();
+      navigate("/admin/sign-in", { replace: true });
+    } catch (signOutError) {
+      setError(signOutError instanceof Error ? signOutError.message : "Could not end the session.");
+    }
   }
 
   async function openDetails(id) {
@@ -99,33 +81,15 @@ export default function InquiryManagementPage() {
         title="Customer Inquiries"
         description="Review saved inquiries and their linked catalogue context."
         action={
-          token ? (
-            <Button variant="outline" admin onClick={disconnectLocalSession}>
-              End local session
-            </Button>
-          ) : null
+          <Button variant="outline" admin onClick={endSession}>
+            Sign out
+          </Button>
         }
       />
 
       {error && <Alert tone="error" title="Action could not be completed">{error}</Alert>}
 
-      {!token ? (
-        <Card title="Local Raazia session" description="Temporary development access until the centralized Supabase Auth slice is integrated.">
-          <form className="catalogue-session-form" onSubmit={connectLocalSession}>
-            <TextField
-              id="local-raazia-token-inquiries"
-              label="Development token"
-              type="password"
-              value={tokenInput}
-              onChange={(event) => setTokenInput(event.target.value)}
-              helpText="Use DEV_RAAZIA_TOKEN from backend/.env. The server assigns the RAAZIA role; do not enter a role or user ID."
-              autoComplete="off"
-            />
-            <Button type="submit" admin>Connect</Button>
-          </form>
-        </Card>
-      ) : (
-        <div className="catalogue-admin-layout">
+      <div className="catalogue-admin-layout">
           <Card
             title="Saved inquiries"
             description={isLoading ? "Loading saved inquiries…" : `${inquiries.length} saved ${inquiries.length === 1 ? "inquiry" : "inquiries"}`}
@@ -215,8 +179,7 @@ export default function InquiryManagementPage() {
               )}
             </Card>
           )}
-        </div>
-      )}
+      </div>
     </AdminShell>
   );
 }

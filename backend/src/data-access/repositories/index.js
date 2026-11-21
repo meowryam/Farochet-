@@ -102,6 +102,288 @@ async function findOrderById(id) {
   });
 }
 
+async function findUserById(id) {
+  const prisma = getPrismaClient();
+  if (!prisma.user) {
+    const error = new Error("The shared User profile model is not available in the generated Prisma Client.");
+    error.status = 503;
+    error.code = "USER_PROFILE_SCHEMA_NOT_AVAILABLE";
+    throw error;
+  }
+
+  return prisma.user.findUnique({
+    where: { id },
+    select: { id: true, email: true, displayName: true, role: true },
+  });
+}
+
+function registrationIntentError(status, code, message) {
+  const error = new Error(message);
+  error.status = status;
+  error.code = code;
+  return error;
+}
+
+function assertRegistrationIntentModel(prisma) {
+  if (!prisma.customerRegistrationIntent) {
+    throw registrationIntentError(
+      503,
+      "CUSTOMER_REGISTRATION_SCHEMA_NOT_AVAILABLE",
+      "Customer registration setup is not available.",
+    );
+  }
+}
+
+async function createCustomerRegistrationIntent({ supabaseUserId, email, displayName }) {
+  const prisma = getPrismaClient();
+  assertRegistrationIntentModel(prisma);
+
+  return prisma.customerRegistrationIntent.create({
+    data: {
+      supabaseUserId,
+      email,
+      displayName,
+      status: "PENDING",
+    },
+    select: {
+      id: true,
+      supabaseUserId: true,
+      email: true,
+      status: true,
+    },
+  });
+}
+
+async function findPendingCustomerRegistrationByEmail(email) {
+  const prisma = getPrismaClient();
+  assertRegistrationIntentModel(prisma);
+
+  return prisma.customerRegistrationIntent.findFirst({
+    where: { email, status: "PENDING" },
+    orderBy: { createdAt: "desc" },
+    select: {
+      id: true,
+      supabaseUserId: true,
+      email: true,
+      status: true,
+    },
+  });
+}
+
+async function activateCustomerRegistrationIntent({
+  supabaseUserId,
+  email,
+  emailConfirmedAt,
+}) {
+  const prisma = getPrismaClient();
+  assertRegistrationIntentModel(prisma);
+
+  if (!emailConfirmedAt) {
+    throw registrationIntentError(
+      403,
+      "CUSTOMER_REGISTRATION_EMAIL_UNCONFIRMED",
+      "Confirm your email before finishing Customer registration.",
+    );
+  }
+
+  return prisma.$transaction(async (transaction) => {
+    let intent = await transaction.customerRegistrationIntent.findUnique({
+      where: { supabaseUserId },
+    });
+
+    if (!intent) {
+      throw registrationIntentError(
+        404,
+        "CUSTOMER_REGISTRATION_INTENT_NOT_FOUND",
+        "No pending Customer registration was found for this account.",
+      );
+    }
+
+    if (intent.email !== email) {
+      throw registrationIntentError(
+        409,
+        "USER_PROFILE_EMAIL_MISMATCH",
+        "The verified email does not match the registration details.",
+      );
+    }
+
+    const now = new Date();
+    if (intent.status === "CONSUMED") {
+      throw registrationIntentError(
+        409,
+        "CUSTOMER_REGISTRATION_INTENT_CONSUMED",
+        "This Customer registration has already been completed.",
+      );
+    }
+
+    if (intent.status === "ACTIVE") {
+      if (!intent.expiresAt || intent.expiresAt <= now) {
+        throw registrationIntentError(
+          410,
+          "CUSTOMER_REGISTRATION_INTENT_EXPIRED",
+          "Customer registration setup expired. Contact Raazia for assistance.",
+        );
+      }
+      return { expiresAt: intent.expiresAt };
+    }
+
+    if (intent.status !== "PENDING") {
+      throw registrationIntentError(
+        409,
+        "CUSTOMER_REGISTRATION_INTENT_INVALID",
+        "Customer registration setup is unavailable.",
+      );
+    }
+
+    const activatedAt = now;
+    const expiresAt = new Date(activatedAt.getTime() + 30 * 60 * 1000);
+    const activated = await transaction.customerRegistrationIntent.updateMany({
+      where: {
+        id: intent.id,
+        status: "PENDING",
+      },
+      data: {
+        status: "ACTIVE",
+        activatedAt,
+        expiresAt,
+      },
+    });
+
+    if (activated.count === 1) return { expiresAt };
+
+    intent = await transaction.customerRegistrationIntent.findUnique({
+      where: { supabaseUserId },
+    });
+    if (intent?.email !== email) {
+      throw registrationIntentError(
+        409,
+        "USER_PROFILE_EMAIL_MISMATCH",
+        "The verified email does not match the registration details.",
+      );
+    }
+    if (intent?.status === "ACTIVE" && intent.expiresAt && intent.expiresAt > now) {
+      return { expiresAt: intent.expiresAt };
+    }
+    if (intent?.status === "CONSUMED") {
+      throw registrationIntentError(
+        409,
+        "CUSTOMER_REGISTRATION_INTENT_CONSUMED",
+        "This Customer registration has already been completed.",
+      );
+    }
+    throw registrationIntentError(
+      410,
+      "CUSTOMER_REGISTRATION_INTENT_EXPIRED",
+      "Customer registration setup expired. Contact Raazia for assistance.",
+    );
+  });
+}
+
+async function createCustomerProfileFromRegistrationIntent({ supabaseUserId, email }) {
+  const prisma = getPrismaClient();
+  assertRegistrationIntentModel(prisma);
+
+  return prisma.$transaction(async (transaction) => {
+    const intent = await transaction.customerRegistrationIntent.findUnique({
+      where: { supabaseUserId },
+    });
+
+    if (!intent) {
+      throw registrationIntentError(
+        404,
+        "CUSTOMER_REGISTRATION_INTENT_NOT_FOUND",
+        "No pending Customer registration was found for this account.",
+      );
+    }
+    if (intent.email !== email) {
+      throw registrationIntentError(
+        409,
+        "USER_PROFILE_EMAIL_MISMATCH",
+        "The verified email does not match the registration details.",
+      );
+    }
+    if (intent.status === "CONSUMED") {
+      throw registrationIntentError(
+        409,
+        "CUSTOMER_REGISTRATION_INTENT_CONSUMED",
+        "This Customer registration has already been completed.",
+      );
+    }
+    if (intent.status !== "ACTIVE" || !intent.expiresAt) {
+      throw registrationIntentError(
+        409,
+        "CUSTOMER_REGISTRATION_INTENT_NOT_ACTIVE",
+        "Confirm your email and start Customer registration before continuing.",
+      );
+    }
+
+    const now = new Date();
+    if (intent.expiresAt <= now) {
+      throw registrationIntentError(
+        410,
+        "CUSTOMER_REGISTRATION_INTENT_EXPIRED",
+        "Customer registration setup expired. Contact Raazia for assistance.",
+      );
+    }
+
+    const consumed = await transaction.customerRegistrationIntent.updateMany({
+      where: {
+        id: intent.id,
+        status: "ACTIVE",
+        expiresAt: { gt: now },
+      },
+      data: {
+        status: "CONSUMED",
+        consumedAt: now,
+      },
+    });
+    if (consumed.count !== 1) {
+      throw registrationIntentError(
+        409,
+        "CUSTOMER_REGISTRATION_INTENT_CONSUMED",
+        "This Customer registration has already been completed.",
+      );
+    }
+
+    const existing = await transaction.user.findUnique({
+      where: { id: supabaseUserId },
+      select: { id: true, email: true, displayName: true, role: true },
+    });
+    if (existing) {
+      if (existing.email !== email) {
+        throw registrationIntentError(
+          409,
+          "USER_PROFILE_EMAIL_MISMATCH",
+          "The verified email does not match the existing user profile.",
+        );
+      }
+      return { user: existing, created: false };
+    }
+
+    try {
+      const user = await transaction.user.create({
+        data: {
+          id: supabaseUserId,
+          email,
+          displayName: intent.displayName,
+          role: "CUSTOMER",
+        },
+        select: { id: true, email: true, displayName: true, role: true },
+      });
+      return { user, created: true };
+    } catch (error) {
+      if (error?.code === "P2002") {
+        throw registrationIntentError(
+          409,
+          "USER_PROFILE_EMAIL_CONFLICT",
+          "A profile with this email is already associated with another account.",
+        );
+      }
+      throw error;
+    }
+  });
+}
+
 async function seedProducts(products) {
   const prisma = getPrismaClient();
 
@@ -133,6 +415,11 @@ const repository = {
   listOrders,
   upsertOrder,
   findOrderById,
+  findUserById,
+  createCustomerRegistrationIntent,
+  findPendingCustomerRegistrationByEmail,
+  activateCustomerRegistrationIntent,
+  createCustomerProfileFromRegistrationIntent,
   seedProducts,
 };
 

@@ -1,17 +1,13 @@
-const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? "http://localhost:5000/api").replace(/\/$/, "");
-const ADMIN_TOKEN_KEY = "farochet.dev.raazia-token";
+import { getSupabaseClient } from "./supabaseClient";
+
 const CUSTOMER_TOKEN_KEY = "farochet.customer.access-token";
 
-function getAdminToken() {
-  return window.sessionStorage.getItem(ADMIN_TOKEN_KEY) ?? "";
-}
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? "http://localhost:5000/api").replace(/\/$/, "");
 
-function saveAdminToken(token) {
-  window.sessionStorage.setItem(ADMIN_TOKEN_KEY, token);
-}
-
-function clearAdminToken() {
-  window.sessionStorage.removeItem(ADMIN_TOKEN_KEY);
+async function getAccessToken() {
+  const { data, error } = await getSupabaseClient().auth.getSession();
+  if (error) throw error;
+  return data.session?.access_token ?? "";
 }
 
 function getCustomerAccessToken() {
@@ -26,25 +22,27 @@ function clearCustomerAccessToken() {
   window.sessionStorage.removeItem(CUSTOMER_TOKEN_KEY);
 }
 
-async function request(
-  path,
-  {
-    token = getAdminToken(),
-    clearTokenOnUnauthorized = clearAdminToken,
-    ...options
-  } = {},
-) {
+async function request(path, { token, clearTokenOnUnauthorized, ...options } = {}) {
   const headers = new Headers(options.headers ?? {});
   headers.set("Accept", "application/json");
   if (options.body) headers.set("Content-Type", "application/json");
-  if (token) headers.set("Authorization", `Bearer ${token}`);
+  const accessToken = token ?? await getAccessToken();
+  if (accessToken) headers.set("Authorization", `Bearer ${accessToken}`);
 
   const response = await fetch(`${API_BASE_URL}${path}`, { ...options, headers });
   const data = await response.json();
 
-  if (response.status === 401) clearTokenOnUnauthorized();
+  if (response.status === 401) {
+    clearTokenOnUnauthorized?.();
+    const { error: signOutError } = await getSupabaseClient().auth.signOut({ scope: "local" });
+    if (signOutError) throw signOutError;
+  }
+
   if (!response.ok) {
-    throw new Error(data?.error?.message ?? `Backend responded with HTTP ${response.status}.`);
+    const error = new Error(data?.error?.message ?? `Backend responded with HTTP ${response.status}.`);
+    error.code = data?.error?.code;
+    error.status = response.status;
+    throw error;
   }
 
   return data;
@@ -58,6 +56,34 @@ export async function checkBackendHealth() {
   }
 
   return response.json();
+}
+
+export function getCurrentUser(token) {
+  return request("/auth/me", { token }).then((data) => data.user);
+}
+
+export function registerCustomer({ displayName, email, password }) {
+  return request("/auth/register", {
+    token: "",
+    method: "POST",
+    body: JSON.stringify({ displayName, email, password }),
+  });
+}
+
+export function activateCustomerRegistration(token) {
+  return request("/auth/registration/activate", {
+    token,
+    method: "POST",
+    body: JSON.stringify({}),
+  });
+}
+
+export function completeCustomerProfile(token) {
+  return request("/auth/profile", {
+    token,
+    method: "POST",
+    body: JSON.stringify({}),
+  }).then((data) => data.user);
 }
 
 export function listAdminProducts() {
@@ -116,10 +142,7 @@ export function getMyOrder(id, token = getCustomerAccessToken()) {
 
 export {
   API_BASE_URL,
-  clearAdminToken,
   clearCustomerAccessToken,
-  getAdminToken,
   getCustomerAccessToken,
-  saveAdminToken,
   saveCustomerAccessToken,
 };

@@ -299,3 +299,76 @@
     flex: 1;
   }
 }
+.auth-page {
+  display: grid;
+  min-height: 100vh;
+  align-content: center;
+  justify-items: center;
+  padding: var(--space-6);
+}
+
+.auth-page__brand {
+  margin-bottom: var(--space-6);
+}
+
+.auth-card {
+  width: min(100%, 440px);
+}
+
+.auth-form {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.auth-form__support {
+  margin: var(--space-4) 0 0;
+  color: var(--color-text-secondary);
+  text-align: center;
+}
+
+.auth-form__support a {
+  color: var(--color-plum);
+  font-weight: 700;
+}
+
+.auth-card .faro-alert {
+  margin-bottom: var(--space-4);
+}
+
+.account-page {
+  padding-block: var(--space-10) var(--space-16);
+}
+
+.account-details {
+  display: grid;
+  gap: var(--space-4);
+  margin: 0 0 var(--space-5);
+}
+
+.account-details > div {
+  display: grid;
+  grid-template-columns: minmax(120px, 180px) minmax(0, 1fr);
+  gap: var(--space-3);
+}
+
+.account-details dt {
+  color: var(--color-text-secondary);
+  font-weight: 600;
+}
+
+.account-details dd {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 640px) {
+  .account-page {
+    padding-block: var(--space-6) var(--space-10);
+  }
+
+  .account-details > div {
+    grid-template-columns: 1fr;
+    gap: 2px;
+  }
+}

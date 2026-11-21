@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import AdminShell from "../../components/layout/AdminShell";
 import PageHeader from "../../components/layout/PageHeader";
 import Alert from "../../components/ui/Alert";
@@ -7,13 +8,11 @@ import Card from "../../components/ui/Card";
 import EmptyState from "../../components/ui/EmptyState";
 import TextArea from "../../components/ui/TextArea";
 import TextField from "../../components/ui/TextField";
+import { useAuth } from "../../contexts/AuthContext";
 import {
   archiveAdminProduct,
-  clearAdminToken,
   createAdminProduct,
-  getAdminToken,
   listAdminProducts,
-  saveAdminToken,
   updateAdminProduct,
 } from "../../services/api";
 
@@ -56,8 +55,8 @@ function ProductImage({ source }) {
 }
 
 export default function ProductManagementPage() {
-  const [token, setToken] = useState(() => getAdminToken());
-  const [tokenInput, setTokenInput] = useState("");
+  const { signOut } = useAuth();
+  const navigate = useNavigate();
   const [products, setProducts] = useState([]);
   const [form, setForm] = useState(EMPTY_FORM);
   const [editingId, setEditingId] = useState(null);
@@ -80,39 +79,22 @@ export default function ProductManagementPage() {
   }, []);
 
   useEffect(() => {
-    if (token) void loadProducts();
-  }, [loadProducts, token]);
+    void loadProducts();
+  }, [loadProducts]);
 
   function updateField(event) {
     const { name, value } = event.target;
     setForm((current) => ({ ...current, [name]: value }));
   }
 
-  function connectLocalSession(event) {
-    event.preventDefault();
-    const nextToken = tokenInput.trim();
-    if (!nextToken) {
-      setError("Enter the local Raazia token configured in backend/.env.");
-      return;
-    }
-
-    try {
-      saveAdminToken(nextToken);
-      setToken(nextToken);
-      setTokenInput("");
-      setNotice("");
-      setError("");
-    } catch {
-      setError("The browser could not save this session token. Check session storage permissions.");
-    }
-  }
-
-  function disconnectLocalSession() {
-    clearAdminToken();
-    setToken("");
-    setProducts([]);
-    setNotice("");
+  async function endSession() {
     setError("");
+    try {
+      await signOut();
+      navigate("/admin/sign-in", { replace: true });
+    } catch (signOutError) {
+      setError(signOutError instanceof Error ? signOutError.message : "Could not end the session.");
+    }
   }
 
   function startEditing(product) {
@@ -191,39 +173,21 @@ export default function ProductManagementPage() {
         title="Product Management"
         description="Maintain product information and Standard Catalogue Prices."
         action={
-          token ? (
-            <div className="catalogue-header-actions">
-              <Button admin onClick={() => { resetForm(); setIsFormOpen(true); }}>
-                Add Product
-              </Button>
-              <Button variant="outline" admin onClick={disconnectLocalSession}>
-                End local session
-              </Button>
-            </div>
-          ) : null
+          <div className="catalogue-header-actions">
+            <Button admin onClick={() => { resetForm(); setIsFormOpen(true); }}>
+              Add Product
+            </Button>
+            <Button variant="outline" admin onClick={endSession}>
+              Sign out
+            </Button>
+          </div>
         }
       />
 
       {error && <Alert tone="error" title="Action could not be completed">{error}</Alert>}
       {notice && <Alert tone="success">{notice}</Alert>}
 
-      {!token ? (
-        <Card title="Local Raazia session" description="Temporary development access until the centralized Supabase Auth slice is integrated.">
-          <form className="catalogue-session-form" onSubmit={connectLocalSession}>
-            <TextField
-              id="local-raazia-token"
-              label="Development token"
-              type="password"
-              value={tokenInput}
-              onChange={(event) => setTokenInput(event.target.value)}
-              helpText="Use DEV_RAAZIA_TOKEN from backend/.env. The server assigns the RAAZIA role; do not enter a role or user ID."
-              autoComplete="off"
-            />
-            <Button type="submit" admin>Connect</Button>
-          </form>
-        </Card>
-      ) : (
-        <div className="catalogue-admin-layout">
+      <div className="catalogue-admin-layout">
           {isFormOpen && (
             <form className="catalogue-product-form" onSubmit={submitProduct}>
               <Card title={editingId ? "Edit product information" : "Product information"}>
@@ -377,8 +341,7 @@ export default function ProductManagementPage() {
               </div>
             )}
           </Card>
-        </div>
-      )}
+      </div>
     </AdminShell>
   );
 }

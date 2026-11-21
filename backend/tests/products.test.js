@@ -157,31 +157,3 @@ describe("Product Catalogue Administration API", () => {
       .expect(401);
   });
 });
-
-describe("temporary Raazia authentication", () => {
-  it("assigns RAAZIA on the server and rejects this mock session in production", async () => {
-    const { createMockRaaziaAuthentication } = await import(
-      "../src/presentation/middleware/authentication.js"
-    );
-    const auth = createMockRaaziaAuthentication({ token: "local-test-token", environment: "test" });
-    const rejectInProduction = createMockRaaziaAuthentication({
-      token: "local-test-token",
-      environment: "production",
-    });
-
-    const app = createApp({ dataRepository: createMemoryRepository(), authenticate: auth });
-    await request(app)
-      .get("/api/admin/products")
-      .set("Authorization", "Bearer local-test-token")
-      .expect(200);
-
-    const productionApp = createApp({
-      dataRepository: createMemoryRepository(),
-      authenticate: rejectInProduction,
-    });
-    await request(productionApp)
-      .get("/api/admin/products")
-      .set("Authorization", "Bearer local-test-token")
-      .expect(401);
-  });
-});

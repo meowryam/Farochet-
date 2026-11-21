@@ -1,11 +1,11 @@
 # Raazia — Deliverable 4 Implementation Plan
 
-**Plan version:** 1.4
-**Last updated:** 20 November 2026
-**Status:** Bootstrap scaffold and Cycle 1 Member 4 confirmed-order code slice implemented. Member 4 backend tests, frontend build and Prisma schema checks pass. Live Supabase migration/seed execution, centralized authentication integration, installed Node 26 sign-off and second-machine clean-clone verification remain.
+**Plan version:** 1.7
+**Last updated:** 21 November 2026
+**Status:** Bootstrap scaffold, Member 2 Cycle 1 Authentication & Role Access, and Member 4 confirmed-order code slice are implemented locally. Member 2's backend-controlled Customer registration-intent flow and migration are prepared; Member 4's backend tests, frontend build and Prisma schema checks are recorded as passed. Member 2's backend tests, Prisma generation/validation/format checks, and frontend build are recorded as passed. Live Supabase migration/seed execution, live Customer confirmation-email/registration, sign-out verification, production deployment, human acceptance, installed Node 26 sign-off, and second-machine clean-clone verification remain.
 **Previous plan version:** 1.3 is preserved at Git commit `cf3bbed`.
 **Target submission/demo date:** 27 November 2026  
-**Owners:** Member 1, Member 2, Member 3, Member 4; project coordinator owns integration and shared contracts.
+**Owners:** Members 1–4 share project ownership equally; each owns their assigned vertical slice. There is no separately designated project coordinator.
 
 > This is the active plan. The superseded source draft is preserved at `docs/plan-history/plan-v00-original-draft.md`. Do not use its old contracts or status enums. Before changing this plan, save the current version as `docs/plan-history/plan-vNN.md` or rely on a retrievable Git commit, then update the plan version and date.
 
@@ -198,15 +198,19 @@ Cycle dependencies and integration checks are in Sections 9–13.
 **Role rule:** Only `RAAZIA` and `CUSTOMER`; customer signup is assigned `CUSTOMER` server-side. Do not implement custom password storage or `passwordHash`.
 
 **Acceptance criteria:**
-- [ ] Customer can register/sign in/sign out through Supabase Auth.
-- [ ] Express Middleware validates bearer tokens rather than trusting client-supplied user IDs or role values.
-- [ ] Middleware loads the application User role through the Repository and attaches authenticated identity to the request context.
-- [ ] A Customer cannot assign itself the `RAAZIA` role.
-- [ ] Raazia's `RAAZIA` profile is provisioned through the documented controlled setup path.
-- [ ] Protected requests without a valid token are rejected; authenticated but unauthorized role requests are rejected.
+- [ ] Customer can register/sign in/sign out through Supabase Auth. (Backend signup and confirmation-request code is implemented and tested with mocked provider responses; Customer registration, email delivery, and sign-out remain unverified against Supabase.)
+- [x] Express Middleware validates bearer tokens rather than trusting client-supplied user IDs or role values. (Previously recorded automated and invalid-token evidence; not rerun in the manual session.)
+- [x] Middleware loads the application User role through the Repository and attaches authenticated identity to the request context. (User-reported manual CUSTOMER and RAAZIA profile/access checks; not a full database-configuration check.)
+- [x] A Customer cannot assign itself the `RAAZIA` role. (Backend assigns CUSTOMER only after validated, identity-bound intent completion; automated tests verify role assignment and preservation of existing RAAZIA data.)
+- [ ] Raazia's `RAAZIA` profile is provisioned through the documented controlled setup path. (A matching `public.User` profile was manually created and verified; use of the documented controlled setup path was not established.)
+- [x] Protected requests without a valid token are rejected; authenticated but unauthorized role requests are rejected. (Previously recorded missing/invalid-token evidence; CUSTOMER denial at `/admin/sign-in` was also manually verified.)
 - [ ] Business Logic receives the authenticated user ID and enforces record ownership where applicable.
 
 **Checks:** no token, invalid/expired token, valid Customer token, Raazia token, attempted role escalation, missing application profile, `/me` identity consistency.
+
+**Progress / test status (21 Nov 2026):** Backend-controlled Customer signup uses Supabase Auth Admin and stores an intent only after Auth Admin returns a new provider identity. Where confirmation is required, the backend explicitly requests the signup email through Supabase Auth's resend endpoint; signup does not immediately create an application profile. Identity-verification Middleware supplies the provider-verified ID, email, and `email_confirmed_at`. Only then does the Repository start the fixed 30-minute activation window. Completion conditionally consumes the active intent and creates the CUSTOMER profile in one Prisma transaction; existing profiles/roles are not overwritten. Normal sign-in and session restoration remain read-only. Focused auth/repository tests passed (2 files / 25 tests); the full backend suite passed (6 files / 45 tests); Prisma Client generation, schema validation/format check, frontend production build (96 modules), and `git diff --check` passed. Tests use mocked Supabase/Prisma; they do not prove live email delivery or live database concurrency. The user-reported manual Customer/Raazia sign-in/profile/access and SET-membership checks remain separate from these automated results.
+
+**Blockers / next tasks:** The registration-intent migration is prepared but unapplied. Apply the reviewed migrations in order to the shared Supabase database using the approved migration role, then verify table RLS and the runtime role's exact grants. Manually test new Customer signup, delivered confirmation email, confirmed-user activation, profile completion, duplicate signup privacy, existing RAAZIA access, sign-out, and protected routes. Live registration/email, database concurrency and migration grants remain unverified; production deployment and human acceptance are also outstanding. The migration must not be reported as applied based on local tests.
 
 ### Member 3 — Inquiry Review & Management
 
@@ -603,4 +607,11 @@ Group Contribution Log records each member's slice implementation, AI interactio
 | `plan-v01.md` | 18 Nov 2026 | Reconciled D4 baseline: aligns slices/contracts with PRD v1.4 and ADR-001–006; selects stack; adds bootstrap, Git workflow, quality gates and evidence requirements. |
 | `plan-v02.md` (v1.1) | 18 Nov 2026 | Bootstrap scaffold status and provisional verification snapshot; predecessor of the approved Prisma generator switch. |
 | `plan-v03.md` (v1.2) | 18 Nov 2026 | Adopts the current Prisma 7 `prisma-client` generator, generated TypeScript output and Node 26 verification evidence. |
-| v1.3 (active) | 18 Nov 2026 | Replaces the `dev`/feature-branch/PR workflow with direct synchronization, commit and push to `main`. |
+| `plan-v04.md` (v1.3) | 18 Nov 2026 | Archived active v1.3 before changing team ownership and slice status. |
+| v1.4 | 19 Nov 2026 | Records four equal team members with no project coordinator, updates the shared-schema agreement process and Auth Profile Provisioning boundary/status. |
+| `plan-v05.md` (v1.4) | 21 Nov 2026 | Preserves the active v1.4 plan before the Member 2 Cycle 1 status update. |
+| v1.5 | 21 Nov 2026 | Records Member 2 Cycle 1 authentication progress, local test/configuration evidence, and remaining database/live-auth blockers without changing other members' status. |
+| `plan-v06.md` (v1.5) | 21 Nov 2026 | Preserves the active v1.5 plan before reconciling Member 2's user-reported manual authentication and database-permission checks. |
+| v1.6 (active) | 21 Nov 2026 | Separates Member 2's manual Customer/Raazia results from prior automated evidence and records what remains unverified; other members' status is unchanged. |
+| `plan-v07.md` (v1.6) | 21 Nov 2026 | Preserves the active v1.6 plan before recording the approved Member 2 registration-intent implementation and actual local verification. |
+| v1.7 (active) | 21 Nov 2026 | Records Member 2's backend-controlled signup/intent implementation and automated results while keeping the unapplied migration, live email flow, and human acceptance outstanding. |
