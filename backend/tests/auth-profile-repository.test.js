@@ -72,7 +72,7 @@ describe("customer registration intent repository operations", () => {
   it("creates a PENDING intent bound to provider identity and validated display name", async () => {
     vi.resetModules();
     intentClient.create.mockImplementation(async ({ data }) => ({ id: "intent-id", ...data }));
-    const { default: repository } = await import("../src/data-access/repositories/index.js");
+    const { default: repository } = await import("../src/data-access/repositories/index.ts");
 
     await repository.createCustomerRegistrationIntent({
       supabaseUserId: userId,
@@ -95,7 +95,7 @@ describe("customer registration intent repository operations", () => {
     vi.resetModules();
     intentClient.findUnique.mockResolvedValue(activeIntent({ status: "PENDING", activatedAt: null, expiresAt: null }));
     intentClient.updateMany.mockResolvedValue({ count: 1 });
-    const { default: repository } = await import("../src/data-access/repositories/index.js");
+    const { default: repository } = await import("../src/data-access/repositories/index.ts");
 
     const result = await repository.activateCustomerRegistrationIntent({
       supabaseUserId: userId,
@@ -116,7 +116,7 @@ describe("customer registration intent repository operations", () => {
     vi.resetModules();
     const expiry = new Date(Date.now() + 5 * 60 * 1000);
     intentClient.findUnique.mockResolvedValue(activeIntent({ expiresAt: expiry }));
-    const { default: repository } = await import("../src/data-access/repositories/index.js");
+    const { default: repository } = await import("../src/data-access/repositories/index.ts");
 
     const result = await repository.activateCustomerRegistrationIntent({
       supabaseUserId: userId,
@@ -131,7 +131,7 @@ describe("customer registration intent repository operations", () => {
   it("rejects unconfirmed and mismatched identities during activation", async () => {
     vi.resetModules();
     intentClient.findUnique.mockResolvedValue(activeIntent({ status: "PENDING" }));
-    const { default: repository } = await import("../src/data-access/repositories/index.js");
+    const { default: repository } = await import("../src/data-access/repositories/index.ts");
 
     await expect(repository.activateCustomerRegistrationIntent({
       supabaseUserId: userId,
@@ -158,7 +158,7 @@ describe("customer registration intent repository operations", () => {
       displayName: "Customer",
       role: "CUSTOMER",
     });
-    const { default: repository } = await import("../src/data-access/repositories/index.js");
+    const { default: repository } = await import("../src/data-access/repositories/index.ts");
 
     const result = await repository.createCustomerProfileFromRegistrationIntent({
       supabaseUserId: userId,
@@ -187,7 +187,7 @@ describe("customer registration intent repository operations", () => {
   it("rejects an expired intent without creating a profile", async () => {
     vi.resetModules();
     intentClient.findUnique.mockResolvedValue(activeIntent({ expiresAt: new Date(Date.now() - 1000) }));
-    const { default: repository } = await import("../src/data-access/repositories/index.js");
+    const { default: repository } = await import("../src/data-access/repositories/index.ts");
 
     await expect(repository.createCustomerProfileFromRegistrationIntent({
       supabaseUserId: userId,
@@ -206,7 +206,7 @@ describe("customer registration intent repository operations", () => {
       status: "CONSUMED",
       consumedAt: new Date(),
     }));
-    const { default: repository } = await import("../src/data-access/repositories/index.js");
+    const { default: repository } = await import("../src/data-access/repositories/index.ts");
 
     await expect(repository.createCustomerProfileFromRegistrationIntent({
       supabaseUserId: userId,
@@ -229,7 +229,7 @@ describe("customer registration intent repository operations", () => {
     intentClient.findUnique.mockResolvedValue(activeIntent());
     intentClient.updateMany.mockResolvedValue({ count: 1 });
     userClient.findUnique.mockResolvedValue(existing);
-    const { default: repository } = await import("../src/data-access/repositories/index.js");
+    const { default: repository } = await import("../src/data-access/repositories/index.ts");
 
     const result = await repository.createCustomerProfileFromRegistrationIntent({
       supabaseUserId: userId,
@@ -249,7 +249,7 @@ describe("customer registration intent repository operations", () => {
   it("rejects a mismatched verified email without creating a profile", async () => {
     vi.resetModules();
     intentClient.findUnique.mockResolvedValue(activeIntent());
-    const { default: repository } = await import("../src/data-access/repositories/index.js");
+    const { default: repository } = await import("../src/data-access/repositories/index.ts");
 
     await expect(repository.createCustomerProfileFromRegistrationIntent({
       supabaseUserId: userId,
@@ -275,7 +275,7 @@ describe("customer registration intent repository operations", () => {
       displayName: "Customer",
       role: "CUSTOMER",
     });
-    const { default: repository } = await import("../src/data-access/repositories/index.js");
+    const { default: repository } = await import("../src/data-access/repositories/index.ts");
 
     const results = await Promise.allSettled([
       repository.createCustomerProfileFromRegistrationIntent({ supabaseUserId: userId, email }),
@@ -293,7 +293,7 @@ describe("customer registration intent repository operations", () => {
     intentClient.updateMany.mockResolvedValue({ count: 1 });
     userClient.findUnique.mockResolvedValue(null);
     userClient.create.mockRejectedValue(new Error("simulated write failure"));
-    const { default: repository } = await import("../src/data-access/repositories/index.js");
+    const { default: repository } = await import("../src/data-access/repositories/index.ts");
 
     await expect(repository.createCustomerProfileFromRegistrationIntent({
       supabaseUserId: userId,

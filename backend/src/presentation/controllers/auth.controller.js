@@ -1,5 +1,5 @@
 import { z } from "zod";
-import repository from "../../data-access/repositories/index.js";
+import repository from "../../data-access/repositories/index.ts";
 
 const customerRegistrationSchema = z.object({
   displayName: z.string().trim().min(1, "Display name is required."),

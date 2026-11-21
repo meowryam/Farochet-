@@ -1,4 +1,4 @@
-import repository from "../../data-access/repositories/index.js";
+import repository from "../../data-access/repositories/index.ts";
 
 function inquiryError(message, status, code) {
   const error = new Error(message);

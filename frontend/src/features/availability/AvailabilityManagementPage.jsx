@@ -1,15 +1,14 @@
 import { useCallback, useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import AdminShell from "../../components/layout/AdminShell";
 import PageHeader from "../../components/layout/PageHeader";
 import Alert from "../../components/ui/Alert";
 import Button from "../../components/ui/Button";
 import Card from "../../components/ui/Card";
 import TextArea from "../../components/ui/TextArea";
+import { useAuth } from "../../contexts/AuthContext";
 import {
-  clearAdminToken,
   getAdminAvailability,
-  getAdminToken,
-  saveAdminToken,
   updateAdminAvailability,
 } from "../../services/api";
 
@@ -18,8 +17,8 @@ const AVAILABILITY_NAV_ITEMS = [
 ];
 
 export default function AvailabilityManagementPage() {
-  const [token, setToken] = useState(() => getAdminToken());
-  const [tokenInput, setTokenInput] = useState("");
+  const { signOut } = useAuth();
+  const navigate = useNavigate();
   const [information, setInformation] = useState("");
   const [updatedAt, setUpdatedAt] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -42,26 +41,17 @@ export default function AvailabilityManagementPage() {
   }, []);
 
   useEffect(() => {
-    if (token) void loadAvailability();
-  }, [loadAvailability, token]);
+    void loadAvailability();
+  }, [loadAvailability]);
 
-  function connectSession(event) {
-    event.preventDefault();
-    const nextToken = tokenInput.trim();
-    if (!nextToken) {
-      setError("Enter the local Raazia token configured in backend/.env.");
-      return;
+  async function endSession() {
+    setError("");
+    try {
+      await signOut();
+      navigate("/admin/sign-in", { replace: true });
+    } catch (signOutError) {
+      setError(signOutError instanceof Error ? signOutError.message : "Could not end the session.");
     }
-    saveAdminToken(nextToken);
-    setToken(nextToken);
-    setTokenInput("");
-  }
-
-  function disconnectSession() {
-    clearAdminToken();
-    setToken("");
-    setInformation("");
-    setUpdatedAt(null);
   }
 
   async function saveAvailability(event) {
@@ -87,55 +77,36 @@ export default function AvailabilityManagementPage() {
         eyebrow="Farochet Admin"
         title="Availability Management"
         description="Maintain your latest business availability information."
-        action={token ? (
-          <Button variant="outline" admin onClick={disconnectSession}>End local session</Button>
-        ) : null}
+        action={<Button variant="outline" admin onClick={endSession}>End local session</Button>}
       />
       {error && <Alert tone="error" title="Action could not be completed">{error}</Alert>}
       {notice && <Alert tone="success">{notice}</Alert>}
-      {!token ? (
-        <Card title="Local Raazia session" description="Temporary development access until centralized Supabase Auth is integrated.">
-          <form className="availability-session-form" onSubmit={connectSession}>
-            <TextArea
-              id="availability-session-token"
-              label="Development token"
-              value={tokenInput}
-              onChange={(event) => setTokenInput(event.target.value)}
-              helpText="Use DEV_RAAZIA_TOKEN from backend/.env."
-              rows={2}
-              required
-            />
-            <Button type="submit" admin>Connect</Button>
-          </form>
-        </Card>
-      ) : (
-        <Card
-          title="Latest availability"
-          description={updatedAt
-            ? `Last updated ${new Date(updatedAt).toLocaleString()}`
-            : "No availability information has been provided yet."}
-        >
-          <form className="availability-form" onSubmit={saveAvailability}>
-            <TextArea
-              id="availability-information"
-              name="information"
-              label="Availability information"
-              value={information}
-              onChange={(event) => setInformation(event.target.value)}
-              placeholder="Describe when you are currently able to accept and discuss inquiries."
-              helpText="This is manual business availability, not product stock or a recurring schedule."
-              rows={5}
-              required
-              disabled={isLoading || isSaving}
-            />
-            <div className="availability-actions">
-              <Button type="submit" admin disabled={isLoading || isSaving}>
-                {isSaving ? "Saving..." : "Save availability"}
-              </Button>
-            </div>
-          </form>
-        </Card>
-      )}
+      <Card
+        title="Latest availability"
+        description={updatedAt
+          ? `Last updated ${new Date(updatedAt).toLocaleString()}`
+          : "No availability information has been provided yet."}
+      >
+        <form className="availability-form" onSubmit={saveAvailability}>
+          <TextArea
+            id="availability-information"
+            name="information"
+            label="Availability information"
+            value={information}
+            onChange={(event) => setInformation(event.target.value)}
+            placeholder="Describe when you are currently able to accept and discuss inquiries."
+            helpText="This is manual business availability, not product stock or a recurring schedule."
+            rows={5}
+            required
+            disabled={isLoading || isSaving}
+          />
+          <div className="availability-actions">
+            <Button type="submit" admin disabled={isLoading || isSaving}>
+              {isSaving ? "Saving..." : "Save availability"}
+            </Button>
+          </div>
+        </form>
+      </Card>
     </AdminShell>
   );
 }

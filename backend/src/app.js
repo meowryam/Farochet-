@@ -1,6 +1,6 @@
 import express from "express";
 import cors from "cors";
-import repository from "./data-access/repositories/index.js";
+import repository from "./data-access/repositories/index.ts";
 import productManagement, { createProductManagement } from "./business-logic/product/index.js";
 import inquiryManagement, { createInquiryManagement } from "./business-logic/inquiry/index.js";
 import orderManagement, { createOrderManagement } from "./business-logic/order/index.js";

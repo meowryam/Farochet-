@@ -14,15 +14,41 @@ import SignInPage from "./pages/SignInPage";
 
 export default function App() {
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/admin" element={<Navigate to="/admin/products" replace />} />
-        <Route path="/admin/products" element={<ProductManagementPage />} />
-        <Route path="/admin/inquiries" element={<InquiryManagementPage />} />
-        <Route path="/admin/orders" element={<OrderManagementPage />} />
-        <Route path="/orders" element={<CustomerOrdersPage />} />
-        <Route path="*" element={<BootstrapStatusPage />} />
-      </Routes>
-    </BrowserRouter>
+    <AuthProvider>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/sign-in" element={<SignInPage />} />
+          <Route path="/register" element={<CustomerRegistrationPage />} />
+          <Route path="/admin/sign-in" element={<SignInPage adminOnly />} />
+          <Route
+            path="/admin"
+            element={<RequireAuth roles={["RAAZIA"]}><Navigate to="/admin/products" replace /></RequireAuth>}
+          />
+          <Route
+            path="/admin/products"
+            element={<RequireAuth roles={["RAAZIA"]}><ProductManagementPage /></RequireAuth>}
+          />
+          <Route
+            path="/admin/availability"
+            element={<RequireAuth roles={["RAAZIA"]}><AvailabilityManagementPage /></RequireAuth>}
+          />
+          <Route
+            path="/admin/inquiries"
+            element={<RequireAuth roles={["RAAZIA"]}><InquiryManagementPage /></RequireAuth>}
+          />
+          <Route
+            path="/admin/orders"
+            element={<RequireAuth roles={["RAAZIA"]}><OrderManagementPage /></RequireAuth>}
+          />
+          <Route path="/orders" element={<CustomerOrdersPage />} />
+          <Route path="/availability" element={<AvailabilityPage />} />
+          <Route
+            path="/customer"
+            element={<RequireAuth roles={["CUSTOMER"]}><CustomerAccountPage /></RequireAuth>}
+          />
+          <Route path="*" element={<BootstrapStatusPage />} />
+        </Routes>
+      </BrowserRouter>
+    </AuthProvider>
   );
 }

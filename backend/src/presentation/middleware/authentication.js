@@ -1,4 +1,4 @@
-import repository from "../../data-access/repositories/index.js";
+import repository from "../../data-access/repositories/index.ts";
 
 function unauthorized(res) {
   return res.status(401).json({

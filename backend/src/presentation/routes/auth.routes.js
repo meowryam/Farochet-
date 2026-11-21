@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { createAuthController } from "../controllers/auth.controller.js";
-import repository from "../../data-access/repositories/index.js";
+import repository from "../../data-access/repositories/index.ts";
 import {
   authenticateRequest,
   createSupabaseIdentityVerification,

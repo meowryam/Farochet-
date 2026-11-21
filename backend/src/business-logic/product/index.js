@@ -1,4 +1,4 @@
-import repository from "../../data-access/repositories/index.js";
+import repository from "../../data-access/repositories/index.ts";
 import pricingAndDiscountManagement from "../pricing/index.js";
 
 function productError(message, status, code) {

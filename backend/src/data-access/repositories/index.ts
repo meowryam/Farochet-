@@ -381,6 +381,8 @@ async function createCustomerProfileFromRegistrationIntent({ supabaseUserId, ema
       }
       throw error;
     }
+  });
+}
 
 async function getAvailability() {
   return getPrismaClient().raaziaAvailability.findUnique({

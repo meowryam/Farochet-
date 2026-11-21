@@ -5,7 +5,7 @@ describe("centralized Prisma repository", () => {
     vi.resetModules();
     delete process.env.DATABASE_URL;
 
-    const { getPrismaClient } = await import("../src/data-access/repositories/index.js");
+    const { getPrismaClient } = await import("../src/data-access/repositories/index.ts");
 
     expect(() => getPrismaClient()).toThrow(/DATABASE_URL is not configured/);
   });
@@ -14,7 +14,7 @@ describe("centralized Prisma repository", () => {
     vi.resetModules();
     process.env.DATABASE_URL = "postgresql://user:pass@localhost:5432/postgres";
 
-    const repositoryModule = await import("../src/data-access/repositories/index.js");
+    const repositoryModule = await import("../src/data-access/repositories/index.ts");
     const client = repositoryModule.getPrismaClient();
 
     expect(client).toBe(repositoryModule.getPrismaClient());
@@ -25,6 +25,6 @@ describe("centralized Prisma repository", () => {
 });
 
 afterAll(async () => {
-  const repositoryModule = await import("../src/data-access/repositories/index.js");
+  const repositoryModule = await import("../src/data-access/repositories/index.ts");
   await repositoryModule.getPrismaClient().$disconnect();
 });
