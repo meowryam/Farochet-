@@ -4,6 +4,7 @@ import repository from "./data-access/repositories/index.js";
 import productManagement, { createProductManagement } from "./business-logic/product/index.js";
 import inquiryManagement, { createInquiryManagement } from "./business-logic/inquiry/index.js";
 import orderManagement, { createOrderManagement } from "./business-logic/order/index.js";
+import availabilityManagement, { createAvailabilityManagement } from "./business-logic/availability/index.js";
 import pricingAndDiscountManagement from "./business-logic/pricing/index.js";
 import {
   authenticateRequest,
@@ -14,6 +15,7 @@ import { createAuthRoutes } from "./presentation/routes/auth.routes.js";
 import { createProductRoutes } from "./presentation/routes/product.routes.js";
 import { createInquiryRoutes } from "./presentation/routes/inquiry.routes.js";
 import { createOrderRoutes } from "./presentation/routes/order.routes.js";
+import { createAvailabilityRoutes } from "./presentation/routes/availability.routes.js";
 import { notFoundHandler } from "./presentation/middleware/notFoundHandler.js";
 import { errorHandler } from "./presentation/middleware/errorHandler.js";
 
@@ -22,6 +24,7 @@ export function createApp({
   productManagement: productManagementOverride,
   inquiryManagement: inquiryManagementOverride,
   orderManagement: orderManagementOverride,
+  availabilityManagement: availabilityManagementOverride,
   authenticate = authenticateRequest,
   authenticateCustomer = authenticate,
   verifyIdentity = createSupabaseIdentityVerification(),
@@ -45,8 +48,18 @@ export function createApp({
       ? orderManagement
       : createOrderManagement({ repository: dataRepository })
   );
+  const availability = availabilityManagementOverride ?? (
+    dataRepository === repository
+      ? availabilityManagement
+      : createAvailabilityManagement({ repository: dataRepository })
+  );
   const orderRoutes = createOrderRoutes({
     orderManagement: orders,
+    authenticate,
+    authenticateCustomer,
+  });
+  const availabilityRoutes = createAvailabilityRoutes({
+    availabilityManagement: availability,
     authenticate,
     authenticateCustomer,
   });
@@ -69,6 +82,9 @@ export function createApp({
     createInquiryRoutes({ inquiryManagement: inquiries, authenticate }),
   );
   app.use("/api/admin/orders", orderRoutes.adminRouter);
+  app.use("/api/admin/availability", availabilityRoutes.adminRouter);
+  app.use("/api/customer/availability", availabilityRoutes.customerRouter);
+  app.use("/api/availability", availabilityRoutes.publicRouter);
   app.use("/api/customer/orders", orderRoutes.customerRouter);
   app.use("/api/orders", orderRoutes.customerRouter);
 

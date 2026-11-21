@@ -110,6 +110,28 @@ export function archiveAdminProduct(id) {
   }).then((data) => data.product);
 }
 
+export function getAdminAvailability() {
+  return request("/admin/availability").then((data) => data.availability);
+}
+
+export function updateAdminAvailability(information) {
+  return request("/admin/availability", {
+    method: "PUT",
+    body: JSON.stringify({ information }),
+  }).then((data) => data.availability);
+}
+
+export function getPublicAvailability() {
+  return fetch(`${API_BASE_URL}/availability`, { headers: { Accept: "application/json" } })
+    .then(async (response) => {
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data?.error?.message ?? `Backend responded with HTTP ${response.status}.`);
+      }
+      return data.availability;
+    });
+}
+
 export function listAdminInquiries() {
   return request("/admin/inquiries").then((data) => data.inquiries);
 }

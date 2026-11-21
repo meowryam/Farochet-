@@ -269,6 +269,35 @@
   border: 0;
 }
 
+.availability-session-form,
+.availability-form,
+.availability-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.availability-actions {
+  align-items: flex-start;
+}
+
+.availability-public-page {
+  max-width: 760px;
+  margin: 48px auto;
+  padding: 0 24px;
+}
+
+.availability-information,
+.availability-not-provided {
+  margin: 0;
+  white-space: pre-wrap;
+  line-height: 1.7;
+}
+
+.availability-not-provided {
+  color: #666;
+}
+
 @media (max-width: 640px) {
   .catalogue-session-form,
   .catalogue-info-fields,

@@ -93,3 +93,9 @@ model Order {
   @@index([inquiryId, confirmedAt])
   @@index([manufacturingStatus, confirmedAt])
 }
+
+model RaaziaAvailability {
+  id          String   @id @default("current")
+  information String
+  updatedAt   DateTime @updatedAt
+}

@@ -381,6 +381,18 @@ async function createCustomerProfileFromRegistrationIntent({ supabaseUserId, ema
       }
       throw error;
     }
+
+async function getAvailability() {
+  return getPrismaClient().raaziaAvailability.findUnique({
+    where: { id: "current" },
+  });
+}
+
+async function upsertAvailability(information) {
+  return getPrismaClient().raaziaAvailability.upsert({
+    where: { id: "current" },
+    create: { id: "current", information },
+    update: { information },
   });
 }
 
@@ -420,6 +432,8 @@ const repository = {
   findPendingCustomerRegistrationByEmail,
   activateCustomerRegistrationIntent,
   createCustomerProfileFromRegistrationIntent,
+  getAvailability,
+  upsertAvailability,
   seedProducts,
 };
 
