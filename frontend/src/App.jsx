@@ -13,6 +13,7 @@ import CustomerAccountPage from "./pages/CustomerAccountPage";
 import CustomerRegistrationPage from "./pages/CustomerRegistrationPage";
 import SignInPage from "./pages/SignInPage";
 import AuthCallbackPage from "./pages/AuthCallbackPage";
+import CustomerCataloguePage from "./features/catalogue/CustomerCataloguePage";
 
 export default function App() {
   return (
@@ -49,6 +50,8 @@ export default function App() {
           />
           <Route path="/orders" element={<CustomerOrdersPage />} />
           <Route path="/availability" element={<AvailabilityPage />} />
+          <Route path="/" element={<CustomerCataloguePage />} />
+          <Route path="/catalogue" element={<CustomerCataloguePage />} />
           <Route
             path="/customer"
             element={<Navigate to="/account" replace />}

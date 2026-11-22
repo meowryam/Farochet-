@@ -180,3 +180,62 @@ describe("Product Catalogue Administration API", () => {
       .expect(401);
   });
 });
+
+describe("Public Product Catalogue API", () => {
+  let dataRepository;
+  let app;
+
+  beforeEach(() => {
+    dataRepository = createMemoryRepository();
+    app = createApp({ dataRepository, authenticate: raaziaSession });
+  });
+
+  it("lists only listed products without exposing administrative fields", async () => {
+    const listed = await dataRepository.createProduct(validProduct);
+    const archived = await dataRepository.createProduct({
+      ...validProduct,
+      name: "Archived flower",
+    });
+    await dataRepository.archiveProduct(archived.id);
+
+    const response = await request(app)
+      .get("/api/products")
+      .expect(200);
+
+    expect(response.body.products).toHaveLength(1);
+    expect(response.body.products[0]).toMatchObject({
+      id: listed.id,
+      name: validProduct.name,
+      basePrice: validProduct.basePrice,
+    });
+    expect(response.body.products[0]).not.toHaveProperty("isArchived");
+  });
+
+  it("retrieves a listed product by ID and rejects archived or unknown products", async () => {
+    const listed = await dataRepository.createProduct(validProduct);
+    const archived = await dataRepository.createProduct({
+      ...validProduct,
+      name: "Archived flower",
+    });
+    await dataRepository.archiveProduct(archived.id);
+
+    await request(app)
+      .get(`/api/products/${listed.id}`)
+      .expect(200)
+      .expect(({ body }) => expect(body.product).toMatchObject({
+        id: listed.id,
+        name: validProduct.name,
+        basePrice: validProduct.basePrice,
+      }));
+
+    await request(app).get(`/api/products/${archived.id}`).expect(404);
+  });
+
+  it("does not require authentication for public catalogue retrieval", async () => {
+    await dataRepository.createProduct(validProduct);
+
+    await request(app)
+      .get("/api/products")
+      .expect(200);
+  });
+});

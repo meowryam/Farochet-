@@ -11,6 +11,25 @@ describe("GET /api/health", () => {
     expect(response.status).toBe(200);
     expect(response.body).toEqual({ status: "ok", service: "raazia-management-api" });
   });
+
+  it("allows the configured local frontend origin", async () => {
+    const previousOrigin = process.env.FRONTEND_URL;
+    process.env.FRONTEND_URL = "http://localhost:5173";
+
+    try {
+      const response = await request(createApp())
+        .get("/api/health")
+        .set("Origin", "http://localhost:5173");
+
+      expect(response.headers["access-control-allow-origin"]).toBe("http://localhost:5173");
+    } finally {
+      if (previousOrigin === undefined) {
+        delete process.env.FRONTEND_URL;
+      } else {
+        process.env.FRONTEND_URL = previousOrigin;
+      }
+    }
+  });
 });
 
 describe("API routing", () => {

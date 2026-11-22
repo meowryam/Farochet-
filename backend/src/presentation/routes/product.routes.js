@@ -24,5 +24,19 @@ function createProductRoutes({
   return router;
 }
 
+function createPublicProductRoutes({ productManagement } = {}) {
+  if (!productManagement) {
+    throw new Error("Public product routes require Product Management.");
+  }
+
+  const router = Router();
+  const controller = createProductController(productManagement);
+
+  router.get("/", controller.listPublic);
+  router.get("/:id", controller.getPublic);
+
+  return router;
+}
+
 export default createProductRoutes;
-export { createProductRoutes };
+export { createProductRoutes, createPublicProductRoutes };

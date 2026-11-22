@@ -14,7 +14,7 @@ import {
 } from "./presentation/middleware/authentication.js";
 import healthRoutes from "./presentation/routes/health.routes.js";
 import { createAuthRoutes } from "./presentation/routes/auth.routes.js";
-import { createProductRoutes } from "./presentation/routes/product.routes.js";
+import { createProductRoutes, createPublicProductRoutes } from "./presentation/routes/product.routes.js";
 import { createInquiryRoutes } from "./presentation/routes/inquiry.routes.js";
 import { createCustomizationRoutes } from "./presentation/routes/customization.routes.js";
 import { createOrderRoutes } from "./presentation/routes/order.routes.js";
@@ -108,6 +108,10 @@ export function createApp({
   app.use(
     "/api/admin/products",
     createProductRoutes({ productManagement: products, authenticate }),
+  );
+  app.use(
+    "/api/products",
+    createPublicProductRoutes({ productManagement: products }),
   );
   app.use(
     "/api/admin/inquiries",

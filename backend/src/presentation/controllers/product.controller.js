@@ -35,6 +35,17 @@ function parseProductId(req, res) {
   return parsed.data;
 }
 
+function toPublicProduct(product) {
+  return {
+    id: product.id,
+    name: product.name,
+    description: product.description,
+    category: product.category,
+    images: product.images,
+    basePrice: product.basePrice,
+  };
+}
+
 function createProductController(productManagement) {
   return {
     list: async (_req, res) => {
@@ -70,6 +81,16 @@ function createProductController(productManagement) {
       if (!id) return;
       const product = await productManagement.archiveProduct(id);
       res.json({ product });
+    },
+    listPublic: async (_req, res) => {
+      const products = await productManagement.listCatalogue();
+      res.json({ products: products.map(toPublicProduct) });
+    },
+    getPublic: async (req, res) => {
+      const id = parseProductId(req, res);
+      if (!id) return;
+      const product = await productManagement.getCatalogueProduct(id);
+      res.json({ product: toPublicProduct(product) });
     },
   };
 }

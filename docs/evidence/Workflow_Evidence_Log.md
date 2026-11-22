@@ -217,3 +217,24 @@ _Add new slice entries below._
 - **Major issue/change:** Agent-report error on `Customization.inquiryId` uniqueness, found by human review.
 - **Integration status:** Pushed to main as commit 6dd7e1c. Customization and PendingOrderRequest tables not migrated yet (pending the coordinator); real image storage pending.
 - **Evidence link(s):** `docs/evidence/Testing_Evidence_Log.md`; `backend/tests/customization.test.js`; `backend/prisma/schema.prisma`.
+
+### C1-M2 — Product Catalogue Browsing
+
+- **Related PRD requirements:** FR-01; supports FR-02 and FR-03 without changing Standard Catalogue Prices.
+- **Owner:** Member 2.
+- **Plan version:** 1.8 (22 November 2026).
+- **Branch / Pull Request / merge:** `main` working tree; no commit or push.
+- **HITL / AFK mode:** AFK implementation followed by local automated verification.
+- **Reason for mode:** The existing Product model and public route pattern allowed a focused implementation without a missing architectural decision.
+- **AI chat/task reference:** Current Copilot chat — Member 2 complete Product Catalogue Browsing implementation.
+- **Context supplied to agent:** Pasted Member 2 execution task; PRD v1.4; architecture; ADR-001 through ADR-006; `AGENTS.md`; `Guardrails.md`; Farochet UI v1.1 guides; existing admin Product implementation and tests.
+- **Acceptance criteria:** Public customers can browse listed Product records with images, descriptions and Standard Catalogue Price; loading, empty and error states are handled; private/archived records are not exposed.
+- **Important iterations/corrections:** Reused the centralized Product Management and Repository. Added public DTO projection in the Presentation controller and separate public routes; no private status, negotiated price or approved order price is returned. The public page uses only the shared customer shell, UI primitives and feature-specific ProductCard.
+- **Rejected/revised approach (if any):** No hardcoded catalogue data, direct frontend database access, per-product availability/status fields, stock indicators, cart/checkout, or private price fields were introduced. Public discount calculation was not guessed because no active sale configuration exists.
+- **Tests/checks actually run:** Focused `backend/tests/products.test.js`; full backend `npm test`; frontend `npm run build`; `git diff --check`; protected `CustomerHeader.jsx` diff check.
+- **Actual results:** Focused product suite passed 12 tests; full backend suite passed 60 tests; frontend build passed. The build emitted one >500 kB chunk advisory. The protected CustomerHeader remained unchanged. Live browser/API/database integration was not executed.
+- **Human decision:** Pending; coding-agent implementation is provisional.
+- **Decision reason:** Human acceptance and live Supabase persistence/browser verification remain required.
+- **Major issue/change:** Public discount sale pricing is not active in the current data model. This slice displays only the persisted Standard Catalogue Price and does not claim or calculate a public-sale effective price.
+- **Integration status:** Implemented in the working tree; not committed or migrated.
+- **Evidence link(s):** `backend/tests/products.test.js`; `frontend/src/features/catalogue/CustomerCataloguePage.jsx`; `frontend/src/features/catalogue/ProductCard.jsx`; `docs/evidence/Testing_Evidence_Log.md`.

@@ -110,6 +110,17 @@ export function archiveAdminProduct(id) {
   }).then((data) => data.product);
 }
 
+export function listProducts() {
+  return fetch(`${API_BASE_URL}/products`, { headers: { Accept: "application/json" } })
+    .then(async (response) => {
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data?.error?.message ?? `Backend responded with HTTP ${response.status}.`);
+      }
+      return data.products;
+    });
+}
+
 export function getAdminAvailability() {
   return request("/admin/availability").then((data) => data.availability);
 }

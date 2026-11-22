@@ -57,6 +57,14 @@ function createProductManagement({ repository, pricingAndDiscountManagement }) {
   return {
     listProducts: async () => repository.listProducts({ includeArchived: true }),
 
+    listCatalogue: async () => repository.listProducts({ includeArchived: false }),
+
+    getCatalogueProduct: async (id) => {
+      const product = await repository.findProductById(id);
+      if (!product || product.isArchived) throw productNotFound();
+      return product;
+    },
+
     getProduct: async (id) => {
       const product = await repository.findProductById(id);
       if (!product) throw productNotFound();

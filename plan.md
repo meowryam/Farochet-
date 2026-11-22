@@ -1,8 +1,8 @@
 # Raazia — Deliverable 4 Implementation Plan
 
-**Plan version:** 1.7
-**Last updated:** 21 November 2026
-**Status:** Bootstrap scaffold, Member 2 Cycle 1 Authentication & Role Access, and Member 4 confirmed-order code slice are implemented locally. Member 2's backend-controlled Customer registration-intent flow and migration are prepared; Member 4's backend tests, frontend build and Prisma schema checks are recorded as passed. Member 2's backend tests, Prisma generation/validation/format checks, and frontend build are recorded as passed. Live Supabase migration/seed execution, live Customer confirmation-email/registration, sign-out verification, production deployment, human acceptance, installed Node 26 sign-off, and second-machine clean-clone verification remain.
+**Plan version:** 1.8
+**Last updated:** 22 November 2026
+**Status:** Bootstrap scaffold, Member 2 Cycle 1 Authentication & Role Access, Member 4 confirmed-order code slice, and public Customer Product Catalogue Browsing are implemented locally. Member 2's backend-controlled Customer registration-intent flow and migration are prepared; Member 4's backend tests, frontend build and Prisma schema checks are recorded as passed. The catalogue's public unauthenticated API and customer UI use persisted listed Products, and focused/full backend tests plus the frontend build pass. Public discount configuration, live Supabase migration/seed execution, live Customer confirmation-email/registration, sign-out verification, production deployment, human acceptance, installed Node 26 sign-off, and second-machine clean-clone verification remain.
 **Previous plan version:** 1.3 is preserved at Git commit `cf3bbed`.
 **Target submission/demo date:** 27 November 2026  
 **Owners:** Members 1–4 share project ownership equally; each owns their assigned vertical slice. There is no separately designated project coordinator.
@@ -208,7 +208,7 @@ Cycle dependencies and integration checks are in Sections 9–13.
 
 **Checks:** no token, invalid/expired token, valid Customer token, Raazia token, attempted role escalation, missing application profile, `/me` identity consistency.
 
-**Progress / test status (21 Nov 2026):** Backend-controlled Customer signup uses Supabase Auth Admin and stores an intent only after Auth Admin returns a new provider identity. Where confirmation is required, the backend explicitly requests the signup email through Supabase Auth's resend endpoint; signup does not immediately create an application profile. Identity-verification Middleware supplies the provider-verified ID, email, and `email_confirmed_at`. Only then does the Repository start the fixed 30-minute activation window. Completion conditionally consumes the active intent and creates the CUSTOMER profile in one Prisma transaction; existing profiles/roles are not overwritten. Normal sign-in and session restoration remain read-only. Focused auth/repository tests passed (2 files / 25 tests); the full backend suite passed (6 files / 45 tests); Prisma Client generation, schema validation/format check, frontend production build (96 modules), and `git diff --check` passed. Tests use mocked Supabase/Prisma; they do not prove live email delivery or live database concurrency. The user-reported manual Customer/Raazia sign-in/profile/access and SET-membership checks remain separate from these automated results.
+**Progress / test status (21 Nov 2026):** Backend-controlled Customer signup uses Supabase Auth Admin and stores an intent only after Auth Admin returns a new provider identity. Where confirmation is required, the backend explicitly requests the signup email through Supabase Auth's resend endpoint; signup does not immediately create an application profile. Identity-verification Middleware supplies the provider-verified ID, email, and `email_confirmed_at`. Only then does the Repository start the fixed 30-minute activation window. Completion conditionally consumes the active intent and creates the CUSTOMER profile in one Prisma transaction; existing profiles/roles are not overwritten. Normal sign-in and session restoration remain read-only. Focused auth/repository/CORS tests passed (3 files / 29 tests); the full backend suite passed (7 files / 54 tests); Prisma validation and the frontend production build passed (98 modules), with the existing chunk-size advisory. Tests use mocked Supabase/Prisma; they do not prove live email delivery or live database concurrency. The user-reported manual Customer/Raazia sign-in/profile/access and SET-membership checks remain separate from these automated results. A live placeholder registration probe confirmed the exact configuration blocker `SUPABASE_SERVICE_ROLE_KEY` is absent; no real account or email was created.
 
 **Blockers / next tasks:** The registration-intent migration is prepared but unapplied. Apply the reviewed migrations in order to the shared Supabase database using the approved migration role, then verify table RLS and the runtime role's exact grants. Manually test new Customer signup, delivered confirmation email, confirmed-user activation, profile completion, duplicate signup privacy, existing RAAZIA access, sign-out, and protected routes. Live registration/email, database concurrency and migration grants remain unverified; production deployment and human acceptance are also outstanding. The migration must not be reported as applied based on local tests.
 
@@ -332,10 +332,10 @@ Cycle dependencies and integration checks are in Sections 9–13.
 **Requirement:** FR-01.
 
 **Acceptance criteria:**
-- [ ] Customers can browse listed catalogue products and view images, descriptions and Standard Catalogue Price.
-- [ ] The same public sale price is shown to all covered customers.
-- [ ] Product catalogue does not reveal private Negotiated Prices or another customer's Approved Price.
-- [ ] Empty/loading/error states are handled.
+- [x] Customers can browse listed catalogue products and view images, descriptions and Standard Catalogue Price.
+- [ ] The same public sale price is shown to all covered customers; the public-discount configuration/model is not implemented in this slice.
+- [x] Product catalogue does not reveal private Negotiated Prices or another customer's Approved Price.
+- [x] Empty/loading/error states are handled.
 
 **Checks:** no products; product with images; product with no optional image; sale on/off; verify no private price leakage.
 
@@ -615,3 +615,5 @@ Group Contribution Log records each member's slice implementation, AI interactio
 | v1.6 (active) | 21 Nov 2026 | Separates Member 2's manual Customer/Raazia results from prior automated evidence and records what remains unverified; other members' status is unchanged. |
 | `plan-v07.md` (v1.6) | 21 Nov 2026 | Preserves the active v1.6 plan before recording the approved Member 2 registration-intent implementation and actual local verification. |
 | v1.7 (active) | 21 Nov 2026 | Records Member 2's backend-controlled signup/intent implementation and automated results while keeping the unapplied migration, live email flow, and human acceptance outstanding. |
+| `plan-v08.md` (v1.7) | 22 Nov 2026 | Preserves the active v1.7 plan before recording public customer catalogue browsing implementation and verification. |
+| v1.8 (active) | 22 Nov 2026 | Records the public catalogue API/UI implementation and test/build results; public-discount configuration and live database verification remain outstanding. |
