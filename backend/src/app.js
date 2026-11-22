@@ -117,18 +117,17 @@ export function createApp({
     "/api/admin/products",
     createProductRoutes({ productManagement: products, authenticate }),
   );
-  app.use(
-<<<<<<< HEAD
+ app.use(
     "/api/products",
     createPublicProductRoutes({ productManagement: products }),
-=======
+  );
+  app.use(
     "/api/admin/pricing",
     createAdminPricingRouter({ pricingAndDiscountManagement: pricing, authenticate }),
   );
   app.use(
     "/api/pricing/public",
     createPublicPricingRouter(pricing),
->>>>>>> aacb238 (feat(cycle-3): implement Member 1 pricing and public discount management (FR-02, FR-03))
   );
   app.use(
     "/api/admin/inquiries",

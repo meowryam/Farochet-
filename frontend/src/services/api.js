@@ -110,24 +110,24 @@ export function archiveAdminProduct(id) {
   }).then((data) => data.product);
 }
 
-<<<<<<< HEAD
 export function listProducts() {
   return fetch(`${API_BASE_URL}/products`, { headers: { Accept: "application/json" } })
-=======
-export function getPublicPricing() {
-  return fetch(`${API_BASE_URL}/pricing/public`, { headers: { Accept: "application/json" } })
->>>>>>> aacb238 (feat(cycle-3): implement Member 1 pricing and public discount management (FR-02, FR-03))
     .then(async (response) => {
       const data = await response.json();
       if (!response.ok) {
         throw new Error(data?.error?.message ?? `Backend responded with HTTP ${response.status}.`);
       }
-<<<<<<< HEAD
       return data.products;
     });
 }
 
-=======
+export function getPublicPricing() {
+  return fetch(`${API_BASE_URL}/pricing/public`, { headers: { Accept: "application/json" } })
+    .then(async (response) => {
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data?.error?.message ?? `Backend responded with HTTP ${response.status}.`);
+      }
       return data;
     });
 }
@@ -145,7 +145,6 @@ export function removeAdminPublicDiscount() {
   }).then((data) => data);
 }
 
->>>>>>> aacb238 (feat(cycle-3): implement Member 1 pricing and public discount management (FR-02, FR-03))
 export function getAdminAvailability() {
   return request("/admin/availability").then((data) => data.availability);
 }
