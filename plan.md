@@ -1,8 +1,8 @@
 # Raazia — Deliverable 4 Implementation Plan
 
-**Plan version:** 1.8
+**Plan version:** 2.0
 **Last updated:** 22 November 2026
-**Status:** Bootstrap scaffold, Member 2 Cycle 1 Authentication & Role Access, Member 4 confirmed-order code slice, and public Customer Product Catalogue Browsing are implemented locally. Member 2's backend-controlled Customer registration-intent flow and migration are prepared; Member 4's backend tests, frontend build and Prisma schema checks are recorded as passed. The catalogue's public unauthenticated API and customer UI use persisted listed Products, and focused/full backend tests plus the frontend build pass. Public discount configuration, live Supabase migration/seed execution, live Customer confirmation-email/registration, sign-out verification, production deployment, human acceptance, installed Node 26 sign-off, and second-machine clean-clone verification remain.
+**Status:** Bootstrap scaffold, Member 2 Cycle 1 Authentication & Role Access, Member 4 confirmed-order code slice, public Customer Product Catalogue Browsing, and Member 2 Cycle 4 Wishlist Management are implemented locally. The Customer Wishlist migration has been applied to the shared Supabase development database; Prisma reported all eight migrations up to date. The user reports successful browser testing of Wishlist functionality; that manual result is distinct from the automated test results recorded in the evidence log. Full backend and frontend suites, production build, and Prisma schema validation pass. Formal project acceptance, public discount configuration, other pending live Supabase operations, live Customer confirmation-email/registration, sign-out verification, production deployment, installed Node 26 sign-off, and second-machine clean-clone verification also remain.
 **Previous plan version:** 1.3 is preserved at Git commit `cf3bbed`.
 **Target submission/demo date:** 27 November 2026  
 **Owners:** Members 1–4 share project ownership equally; each owns their assigned vertical slice. There is no separately designated project coordinator.
@@ -392,6 +392,8 @@ Cycle dependencies and integration checks are in Sections 9–13.
 
 **Requirement:** FR-16; ADR-004.
 
+**Implementation and database status:** Customer-scoped API and UI operations are implemented. The Wishlist migration is applied to the shared Supabase development database, and Prisma migration status reported no pending migrations. The user reports successful browser testing of Wishlist functionality; this assistant did not independently repeat the browser test. Automated tests remain separate from that manual report; formal project acceptance is not yet recorded.
+
 **Acceptance criteria:**
 - [ ] Logged-in Customer can add, list and remove Products from their personal wishlist.
 - [ ] Wishlist persists across sessions/restarts.
@@ -617,3 +619,7 @@ Group Contribution Log records each member's slice implementation, AI interactio
 | v1.7 (active) | 21 Nov 2026 | Records Member 2's backend-controlled signup/intent implementation and automated results while keeping the unapplied migration, live email flow, and human acceptance outstanding. |
 | `plan-v08.md` (v1.7) | 22 Nov 2026 | Preserves the active v1.7 plan before recording public customer catalogue browsing implementation and verification. |
 | v1.8 (active) | 22 Nov 2026 | Records the public catalogue API/UI implementation and test/build results; public-discount configuration and live database verification remain outstanding. |
+| `plan-v09.md` (v1.8) | 22 Nov 2026 | Preserves the active v1.8 plan before recording Member 2's Cycle 4 Wishlist Management implementation and local verification. |
+| v1.9 (active) | 22 Nov 2026 | Records Wishlist API/UI, schema/migration, automated tests and build results; the unapplied migration, live persistence/RLS verification and human acceptance remain outstanding. |
+| `plan-v10.md` (v1.9) | 22 Nov 2026 | Preserves the active v1.9 plan before recording applied Wishlist migration status and user-reported browser testing. |
+| v2.0 (active) | 22 Nov 2026 | Records that the Wishlist migration is applied, Prisma reports no pending migrations, and the user reports successful browser testing; automated test results are recorded separately. |

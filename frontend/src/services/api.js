@@ -145,6 +145,25 @@ export function removeAdminPublicDiscount() {
   }).then((data) => data);
 }
 
+export function listMyWishlist(token) {
+  return request("/customer/wishlist", { token }).then((data) => data.items);
+}
+
+export function addMyWishlistItem(productId, token) {
+  return request("/customer/wishlist", {
+    token,
+    method: "POST",
+    body: JSON.stringify({ productId }),
+  }).then((data) => data);
+}
+
+export function removeMyWishlistItem(productId, token) {
+  return request(`/customer/wishlist/${encodeURIComponent(productId)}`, {
+    token,
+    method: "DELETE",
+  }).then((data) => data);
+}
+
 export function getAdminAvailability() {
   return request("/admin/availability").then((data) => data.availability);
 }

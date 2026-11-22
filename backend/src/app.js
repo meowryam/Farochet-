@@ -9,6 +9,7 @@ import availabilityManagement, { createAvailabilityManagement } from "./business
 import statusManagement, { createStatusManagement } from "./business-logic/status/index.js";
 import pricingAndDiscountManagement from "./business-logic/pricing/index.js";
 import { createPricingAndDiscountManagement } from "./business-logic/pricing/index.js";
+import wishlistManagement, { createWishlistManagement } from "./business-logic/wishlist/index.js";
 import {
   authenticateRequest,
   createSupabaseIdentityVerification,
@@ -24,6 +25,7 @@ import {
   createAdminPricingRouter,
   createPublicPricingRouter,
 } from "./presentation/routes/pricing.routes.js";
+import { createWishlistRoutes } from "./presentation/routes/wishlist.routes.js";
 import { notFoundHandler } from "./presentation/middleware/notFoundHandler.js";
 import { errorHandler } from "./presentation/middleware/errorHandler.js";
 import { createInMemoryImageStorage } from "./data-access/storage/inMemoryImageStorage.js";
@@ -35,6 +37,7 @@ export function createApp({
   customizationManagement: customizationManagementOverride,
   orderManagement: orderManagementOverride,
   availabilityManagement: availabilityManagementOverride,
+  wishlistManagement: wishlistManagementOverride,
   imageStorage = createInMemoryImageStorage(),
   authenticate = authenticateRequest,
   authenticateCustomer = authenticate,
@@ -75,6 +78,11 @@ export function createApp({
   const statuses = dataRepository === repository
     ? statusManagement
     : createStatusManagement({ repository: dataRepository });
+  const wishlist = wishlistManagementOverride ?? (
+    dataRepository === repository
+      ? wishlistManagement
+      : createWishlistManagement({ repository: dataRepository, productManagement: products })
+  );
   const orderRoutes = createOrderRoutes({
     orderManagement: orders,
     statusManagement: statuses,
@@ -117,7 +125,7 @@ export function createApp({
     "/api/admin/products",
     createProductRoutes({ productManagement: products, authenticate }),
   );
- app.use(
+  app.use(
     "/api/products",
     createPublicProductRoutes({ productManagement: products }),
   );
@@ -141,6 +149,13 @@ export function createApp({
     "/api/customer/customization",
     createCustomizationRoutes({
       customizationManagement: customizations,
+      authenticate: authenticateCustomer,
+    }),
+  );
+  app.use(
+    "/api/customer/wishlist",
+    createWishlistRoutes({
+      wishlistManagement: wishlist,
       authenticate: authenticateCustomer,
     }),
   );

@@ -5,10 +5,17 @@ import Button from "../../components/ui/Button";
 import CustomerShell from "../../components/layout/CustomerShell";
 import ContentContainer from "../../components/layout/ContentContainer";
 import CrochetFlower from "../../components/brand/CrochetFlower";
+import { useAuth } from "../../contexts/AuthContext";
 import { listProducts } from "../../services/api";
+import { useCustomerWishlist } from "../wishlist/useCustomerWishlist";
 import ProductCard from "./ProductCard";
 
 export default function CustomerCataloguePage() {
+  const { session, user, loading: authLoading } = useAuth();
+  const isCustomerSession = !authLoading
+    && user?.role === "CUSTOMER"
+    && user.id === session?.user?.id;
+  const wishlist = useCustomerWishlist(isCustomerSession ? session : null);
   const [products, setProducts] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
@@ -28,6 +35,8 @@ export default function CustomerCataloguePage() {
   useEffect(() => {
     void loadProducts();
   }, [loadProducts]);
+
+  const savedProductIds = new Set(wishlist.items.map((item) => item.product.id));
 
   return (
     <CustomerShell
@@ -56,6 +65,23 @@ export default function CustomerCataloguePage() {
           </Alert>
         )}
 
+        {wishlist.error && (
+          <Alert tone="error" title="Wishlist could not be updated">
+            <div className="catalogue-public-error">
+              <span>{wishlist.error}</span>
+              <Button
+                variant="outline"
+                onClick={() => void wishlist.reload()}
+                loading={wishlist.isLoading}
+              >
+                Try again
+              </Button>
+            </div>
+          </Alert>
+        )}
+
+        {wishlist.notice && <Alert tone="success">{wishlist.notice}</Alert>}
+
         {isLoading ? (
           <p className="catalogue-public-state" role="status">Loading products…</p>
         ) : !error && products.length === 0 ? (
@@ -67,7 +93,25 @@ export default function CustomerCataloguePage() {
         ) : (
           !error && (
             <div className="catalogue-public-grid">
-              {products.map((product) => <ProductCard key={product.id} product={product} />)}
+              {products.map((product) => {
+                const saved = savedProductIds.has(product.id);
+                return (
+                  <ProductCard
+                    key={product.id}
+                    product={product}
+                    wishlistAction={isCustomerSession ? {
+                      label: saved ? "Remove from Wishlist" : "Add to Wishlist",
+                      saved,
+                      loading: wishlist.isActionPending(product.id),
+                      onClick: () => void (
+                        saved
+                          ? wishlist.removeProduct(product.id)
+                          : wishlist.addProduct(product.id)
+                      ),
+                    } : null}
+                  />
+                );
+              })}
             </div>
           )
         )}

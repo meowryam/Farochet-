@@ -1,6 +1,7 @@
 import React from "react";
 import FarochetLogo from "../brand/FarochetLogo";
 import CrochetFlower from "../brand/CrochetFlower";
+import HeartIcon from "../ui/HeartIcon";
 
 export default function CustomerFooter({ catalogueHref = "/catalogue", customRequestHref = "/custom-request", inquiryHref = "/inquiries", wishlistHref = "/wishlist" }) {
   return (
@@ -19,7 +20,10 @@ export default function CustomerFooter({ catalogueHref = "/catalogue", customReq
         <nav className="faro-footer__links" aria-label="Your account">
           <strong>Your Farochet</strong>
           <a href={inquiryHref}>My Inquiries</a>
-          <a href={wishlistHref}>My Wishlist</a>
+          <a className="wishlist-footer-link" href={wishlistHref}>
+            <HeartIcon className="wishlist-nav-icon" />
+            <span>My Wishlist</span>
+          </a>
         </nav>
       </div>
       <div className="farochet-container faro-footer__bottom">

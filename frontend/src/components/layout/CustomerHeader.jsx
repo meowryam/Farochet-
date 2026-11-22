@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import FarochetLogo from "../brand/FarochetLogo";
+import HeartIcon from "../ui/HeartIcon";
 
 const DEFAULT_LINKS = [
   { label: "My Orders", href: "/orders" },
@@ -44,7 +45,12 @@ export default function CustomerHeader({
       </nav>
       <div className="faro-customer-actions">
         <a href={accountHref}>Account</a>
-        {wishlistHref && <a href={wishlistHref}>Wishlist</a>}
+        {wishlistHref && (
+          <a className="wishlist-nav-link" href={wishlistHref}>
+            <HeartIcon className="wishlist-nav-icon" />
+            <span>Wishlist</span>
+          </a>
+        )}
       </div>
     </header>
   );

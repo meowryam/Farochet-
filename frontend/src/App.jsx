@@ -14,6 +14,7 @@ import CustomerRegistrationPage from "./pages/CustomerRegistrationPage";
 import SignInPage from "./pages/SignInPage";
 import AuthCallbackPage from "./pages/AuthCallbackPage";
 import CustomerCataloguePage from "./features/catalogue/CustomerCataloguePage";
+import CustomerWishlistPage from "./features/wishlist/CustomerWishlistPage";
 
 export default function App() {
   return (
@@ -59,6 +60,10 @@ export default function App() {
           <Route
             path="/account"
             element={<RequireAuth roles={["CUSTOMER"]}><CustomerAccountPage /></RequireAuth>}
+          />
+          <Route
+            path="/wishlist"
+            element={<RequireAuth roles={["CUSTOMER"]}><CustomerWishlistPage /></RequireAuth>}
           />
           <Route path="*" element={<BootstrapStatusPage />} />
         </Routes>

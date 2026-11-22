@@ -184,6 +184,7 @@
 }
 
 .catalogue-public-card {
+  position: relative;
   overflow: hidden;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-card);
@@ -249,6 +250,72 @@
 .catalogue-public-card__price strong {
   color: var(--color-plum);
   font-size: 18px;
+}
+
+.catalogue-public-card__wishlist-action {
+  position: absolute;
+  top: var(--space-3);
+  right: var(--space-3);
+  z-index: 1;
+}
+
+.wishlist-heart-button {
+  color: var(--color-plum);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-soft);
+  transition:
+    color .16s ease,
+    background-color .16s ease,
+    border-color .16s ease,
+    transform .16s ease;
+}
+
+.wishlist-heart-button:hover:not(:disabled) {
+  color: var(--color-danger);
+  background: var(--color-lilac-mist);
+  transform: scale(1.06);
+}
+
+.wishlist-heart-button:active:not(:disabled) {
+  transform: scale(.96);
+}
+
+.wishlist-heart-button[aria-pressed="true"] {
+  color: var(--color-danger);
+  border-color: var(--color-petal-rose);
+  background: var(--status-danger-bg);
+}
+
+.faro-heart-icon {
+  display: block;
+  width: 21px;
+  height: 21px;
+}
+
+.faro-customer-actions .wishlist-nav-link,
+.wishlist-footer-link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.faro-customer-actions .wishlist-nav-link {
+  transition: color .16s ease;
+}
+
+.faro-customer-actions .wishlist-nav-link:hover {
+  color: var(--color-plum-hover);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.wishlist-nav-icon {
+  width: 16px;
+  height: 16px;
+}
+
+.customer-wishlist-page {
+  padding-block: var(--space-10) var(--space-16);
 }
 
 .catalogue-public-state {

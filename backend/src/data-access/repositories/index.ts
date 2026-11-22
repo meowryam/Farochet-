@@ -157,6 +157,93 @@ async function updateOrderManufacturing(id, data) {
   });
 }
 
+function wishlistSchemaUnavailable(cause) {
+  const error = new Error(
+    "Wishlist storage is not initialized. Please contact the administrator to apply the Wishlist database migration.",
+  );
+  error.status = 503;
+  error.code = "WISHLIST_SCHEMA_NOT_AVAILABLE";
+  if (cause) error.cause = cause;
+  return error;
+}
+
+function mapWishlistStorageError(error) {
+  const missingWishlistTable = error?.code === "P2021"
+    && (
+      error?.meta?.modelName === "WishlistItem"
+      || error?.meta?.driverAdapterError?.cause?.table === "public.WishlistItem"
+    );
+
+  return missingWishlistTable ? wishlistSchemaUnavailable(error) : error;
+}
+
+async function addWishlistItem({ customerId, productId }) {
+  const prisma = getPrismaClient();
+  if (!prisma.wishlistItem) throw wishlistSchemaUnavailable();
+
+  const select = {
+    id: true,
+    customerId: true,
+    productId: true,
+    createdAt: true,
+  };
+
+  try {
+    const item = await prisma.wishlistItem.create({
+      data: { customerId, productId },
+      select,
+    });
+    return { item, created: true };
+  } catch (error) {
+    if (error?.code !== "P2002") throw mapWishlistStorageError(error);
+
+    let item;
+    try {
+      item = await prisma.wishlistItem.findUnique({
+        where: { customerId_productId: { customerId, productId } },
+        select,
+      });
+    } catch (lookupError) {
+      throw mapWishlistStorageError(lookupError);
+    }
+    if (!item) throw error;
+    return { item, created: false };
+  }
+}
+
+async function listWishlistItems(customerId) {
+  const prisma = getPrismaClient();
+  if (!prisma.wishlistItem) throw wishlistSchemaUnavailable();
+
+  try {
+    return await prisma.wishlistItem.findMany({
+      where: { customerId },
+      select: {
+        id: true,
+        productId: true,
+        createdAt: true,
+      },
+      orderBy: [{ createdAt: "desc" }, { id: "asc" }],
+    });
+  } catch (error) {
+    throw mapWishlistStorageError(error);
+  }
+}
+
+async function removeWishlistItem({ customerId, productId }) {
+  const prisma = getPrismaClient();
+  if (!prisma.wishlistItem) throw wishlistSchemaUnavailable();
+
+  try {
+    const result = await prisma.wishlistItem.deleteMany({
+      where: { customerId, productId },
+    });
+    return result.count > 0;
+  } catch (error) {
+    throw mapWishlistStorageError(error);
+  }
+}
+
 async function findUserById(id) {
   const prisma = getPrismaClient();
   if (!prisma.user) {
@@ -488,6 +575,9 @@ const repository = {
   upsertOrder,
   findOrderById,
   updateOrderManufacturing,
+  addWishlistItem,
+  listWishlistItems,
+  removeWishlistItem,
   findUserById,
   createCustomerRegistrationIntent,
   findPendingCustomerRegistrationByEmail,
