@@ -31,6 +31,31 @@ Use one entry per vertical slice. Keep evidence concise but sufficient to recons
 
 _Add new slice entries below._
 
+### Cycle 3 — Member 1 Pricing & Public Discount Management
+
+- **Related PRD requirements:** FR-02, FR-03; ADR-002 and ADR-005.
+- **Owner:** Member 1.
+- **Plan version:** 1.7 (22 November 2026).
+- **Branch / Pull Request / merge:** Current working tree; no commit or pull request created.
+- **HITL / AFK mode:** HITL implementation with local verification.
+- **Reason for mode:** Schema, discount activation, and frontend contract changes affect the shared vertical slice.
+- **AI chat/task reference:** Current Copilot chat — Member 1 Cycle 3 Pricing & Public Discount Management.
+- **Context supplied to agent:** PRD v1.4; `plan.md` Sections 4 and 11; architecture; ADR-002, ADR-005 and ADR-006; AGENTS.md; Guardrails.md; Farochet UI Kit guidelines/catalog/workflow.
+- **Acceptance criteria:** Independent Standard Catalogue Price updates; one authoritative fixed whole-PKR public discount; uniform effective prices; boundary and invalid-input rejection; Raazia-only mutations; public read state; unchanged catalogue prices.
+- **Important iterations/corrections:**
+  - Public discount persistence uses a singleton `PublicDiscount` record containing `active` and nullable `fixedDiscountAmount`.
+  - Sale activation/update is rejected with `409 NO_LISTED_PRODUCTS` when no products are listed.
+  - Active-sale product creation or Standard Catalogue Price update is rejected when the proposed price is equal to or below the fixed discount.
+  - The public read response reports both `standardCataloguePrice` and `effectivePublicPrice`; removing the sale restores effective prices to the unchanged standard prices.
+- **Rejected/revised approach (if any):** No percentage discount, stacking, per-product public discount, negotiated/approved price on Product, stock field, or standard-price mutation was introduced.
+- **Tests/checks actually run:** Prisma validate/format/generate; backend Vitest + Supertest suite; frontend Vite production build.
+- **Actual results:** Prisma validate passed; format check passed after formatting; Prisma 7.10.1 generated successfully. Backend 10 test files / 84 tests passed. Frontend 103 modules built successfully; Vite reported only the existing single-chunk size advisory.
+- **Human decision:** Pending human acceptance.
+- **Decision reason:** Automated checks passed, but no live Supabase migration deployment or human UI review was performed.
+- **Major issue/change:** Migration `20261122180000_public_discount` is ready but not deployed to Supabase.
+- **Integration status:** Implemented in the working tree; live database deployment and human acceptance remain outstanding.
+- **Evidence link(s):** `backend/tests/pricing.test.js`; `backend/tests/products.test.js`; `frontend/src/features/catalogue/ProductManagementPage.jsx`.
+
 ### Cycle 1 — Member 1 Product Catalogue Administration
 
 - **Related PRD requirements:** FR-02; supports FR-01; NFR-01 and NFR-02.

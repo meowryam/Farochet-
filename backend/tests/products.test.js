@@ -5,6 +5,7 @@ import { createApp } from "../src/app.js";
 
 function createMemoryRepository() {
   const products = [];
+  let publicDiscount = null;
 
   return {
     products,
@@ -41,6 +42,19 @@ function createMemoryRepository() {
     },
     async seedProducts(data) {
       return Promise.all(data.map((product) => this.createProduct(product)));
+    },
+    async getPublicDiscount() {
+      return publicDiscount;
+    },
+    async upsertPublicDiscount(data) {
+      publicDiscount = {
+        id: "current",
+        active: data.active,
+        fixedDiscountAmount: data.fixedDiscountAmount,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+      return publicDiscount;
     },
   };
 }

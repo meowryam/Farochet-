@@ -12,7 +12,10 @@ import { useAuth } from "../../contexts/AuthContext";
 import {
   archiveAdminProduct,
   createAdminProduct,
+  getPublicPricing,
   listAdminProducts,
+  removeAdminPublicDiscount,
+  setAdminPublicDiscount,
   updateAdminProduct,
 } from "../../services/api";
 
@@ -65,12 +68,29 @@ export default function ProductManagementPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [publicPricing, setPublicPricing] = useState({
+    active: false,
+    fixedDiscountAmount: null,
+    products: [],
+  });
+  const [discountAmount, setDiscountAmount] = useState("");
+  const [isDiscountSaving, setIsDiscountSaving] = useState(false);
 
   const loadProducts = useCallback(async () => {
     setIsLoading(true);
     setError("");
     try {
-      setProducts(await listAdminProducts());
+      const [loadedProducts, loadedPricing] = await Promise.all([
+        listAdminProducts(),
+        getPublicPricing(),
+      ]);
+      setProducts(loadedProducts);
+      setPublicPricing(loadedPricing);
+      setDiscountAmount(
+        loadedPricing.fixedDiscountAmount == null
+          ? ""
+          : String(loadedPricing.fixedDiscountAmount),
+      );
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : "Could not load products.");
     } finally {
@@ -166,6 +186,56 @@ export default function ProductManagementPage() {
     }
   }
 
+  async function savePublicDiscount(event) {
+    event.preventDefault();
+    setIsDiscountSaving(true);
+    setError("");
+    setNotice("");
+
+    const parsedAmount = Number(discountAmount);
+    if (!Number.isSafeInteger(parsedAmount) || parsedAmount <= 0) {
+      setError("Fixed public discount must be a positive whole-PKR amount.");
+      setIsDiscountSaving(false);
+      return;
+    }
+
+    try {
+      const result = await setAdminPublicDiscount(parsedAmount);
+      setPublicPricing({
+        active: result.active,
+        fixedDiscountAmount: result.fixedDiscountAmount,
+        products: result.products,
+      });
+      setNotice("Public sale discount saved.");
+      await loadProducts();
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : "Could not save the public sale discount.");
+    } finally {
+      setIsDiscountSaving(false);
+    }
+  }
+
+  async function endPublicSale() {
+    setIsDiscountSaving(true);
+    setError("");
+    setNotice("");
+    try {
+      const result = await removeAdminPublicDiscount();
+      setPublicPricing({
+        active: result.active,
+        fixedDiscountAmount: result.fixedDiscountAmount,
+        products: result.products,
+      });
+      setDiscountAmount("");
+      setNotice("Public sale ended.");
+      await loadProducts();
+    } catch (removeError) {
+      setError(removeError instanceof Error ? removeError.message : "Could not end the public sale.");
+    } finally {
+      setIsDiscountSaving(false);
+    }
+  }
+
   return (
     <AdminShell activeKey="products" navItems={PRODUCT_NAV_ITEMS} logoutHref={null}>
       <PageHeader
@@ -188,6 +258,59 @@ export default function ProductManagementPage() {
       {notice && <Alert tone="success">{notice}</Alert>}
 
       <div className="catalogue-admin-layout">
+          <form className="catalogue-product-form" onSubmit={savePublicDiscount}>
+            <Card
+              title="Public Sale / Discount Management"
+              description="One fixed whole-PKR discount is applied uniformly to every listed product."
+            >
+              <div className="catalogue-info-fields">
+                <div className="faro-field">
+                  <label className="faro-field__label">Sale status</label>
+                  <strong>{publicPricing.active ? "Active" : "Inactive"}</strong>
+                  {publicPricing.active && (
+                    <span className="faro-field__help">
+                      Fixed discount: {formatPrice(publicPricing.fixedDiscountAmount)}
+                    </span>
+                  )}
+                </div>
+                <div className="faro-field">
+                  <label className="faro-field__label" htmlFor="public-discount-amount">
+                    Fixed discount amount (PKR)
+                  </label>
+                  <input
+                    id="public-discount-amount"
+                    className="faro-field__control"
+                    type="number"
+                    min="1"
+                    step="1"
+                    value={discountAmount}
+                    onChange={(event) => setDiscountAmount(event.target.value)}
+                    required
+                  />
+                  <span className="faro-field__help">
+                    Must be positive, whole-PKR, and lower than every listed Standard Catalogue Price.
+                  </span>
+                </div>
+              </div>
+              <div className="catalogue-form-actions">
+                {publicPricing.active && (
+                  <Button
+                    variant="outline"
+                    admin
+                    type="button"
+                    onClick={endPublicSale}
+                    disabled={isDiscountSaving}
+                  >
+                    End sale
+                  </Button>
+                )}
+                <Button type="submit" admin loading={isDiscountSaving}>
+                  {publicPricing.active ? "Update discount" : "Activate sale"}
+                </Button>
+              </div>
+            </Card>
+          </form>
+
           {isFormOpen && (
             <form className="catalogue-product-form" onSubmit={submitProduct}>
               <Card title={editingId ? "Edit product information" : "Product information"}>
@@ -294,6 +417,7 @@ export default function ProductManagementPage() {
                       <th scope="col">Product</th>
                       <th scope="col">Category</th>
                       <th scope="col">Standard Catalogue Price</th>
+                      <th scope="col">Effective Public Price</th>
                       <th scope="col">Catalogue record</th>
                       <th scope="col"><span className="sr-only">Actions</span></th>
                     </tr>
@@ -301,6 +425,7 @@ export default function ProductManagementPage() {
                   <tbody>
                     {products.map((product) => {
                       const source = product.images.map(imageSource).find(Boolean);
+                      const pricedProduct = publicPricing.products.find((item) => item.id === product.id);
                       return (
                         <tr key={product.id}>
                           <td>
@@ -314,6 +439,9 @@ export default function ProductManagementPage() {
                           </td>
                           <td>{product.category || "Not provided"}</td>
                           <td>{formatPrice(product.basePrice)}</td>
+                          <td>
+                            {formatPrice(pricedProduct?.effectivePublicPrice ?? product.basePrice)}
+                          </td>
                           <td>
                             <span className={`catalogue-record-badge ${product.isArchived ? "is-archived" : ""}`}>
                               {product.isArchived ? "Archived" : "Listed"}

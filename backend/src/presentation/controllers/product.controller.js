@@ -5,7 +5,7 @@ const productInputSchema = z.object({
   description: z.string().trim().nullable().optional(),
   category: z.string().trim().nullable().optional(),
   images: z.array(z.string().trim().min(1, "Image references cannot be blank.")).optional().default([]),
-  basePrice: z.number(),
+  basePrice: z.number().int().positive("Standard Catalogue Price must be a positive whole-PKR amount."),
 }).strict();
 
 const productIdSchema = z.string().uuid();

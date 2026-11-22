@@ -8,6 +8,7 @@ import orderManagement, { createOrderManagement } from "./business-logic/order/i
 import availabilityManagement, { createAvailabilityManagement } from "./business-logic/availability/index.js";
 import statusManagement, { createStatusManagement } from "./business-logic/status/index.js";
 import pricingAndDiscountManagement from "./business-logic/pricing/index.js";
+import { createPricingAndDiscountManagement } from "./business-logic/pricing/index.js";
 import {
   authenticateRequest,
   createSupabaseIdentityVerification,
@@ -19,6 +20,10 @@ import { createInquiryRoutes } from "./presentation/routes/inquiry.routes.js";
 import { createCustomizationRoutes } from "./presentation/routes/customization.routes.js";
 import { createOrderRoutes } from "./presentation/routes/order.routes.js";
 import { createAvailabilityRoutes } from "./presentation/routes/availability.routes.js";
+import {
+  createAdminPricingRouter,
+  createPublicPricingRouter,
+} from "./presentation/routes/pricing.routes.js";
 import { notFoundHandler } from "./presentation/middleware/notFoundHandler.js";
 import { errorHandler } from "./presentation/middleware/errorHandler.js";
 import { createInMemoryImageStorage } from "./data-access/storage/inMemoryImageStorage.js";
@@ -36,12 +41,15 @@ export function createApp({
   verifyIdentity = createSupabaseIdentityVerification(),
 } = {}) {
   const app = express();
+  const pricing = dataRepository === repository
+    ? pricingAndDiscountManagement
+    : createPricingAndDiscountManagement({ repository: dataRepository });
   const products = productManagementOverride ?? (
     dataRepository === repository
       ? productManagement
       : createProductManagement({
           repository: dataRepository,
-          pricingAndDiscountManagement,
+          pricingAndDiscountManagement: pricing,
         })
   );
   const inquiries = inquiryManagementOverride ?? (
@@ -110,8 +118,17 @@ export function createApp({
     createProductRoutes({ productManagement: products, authenticate }),
   );
   app.use(
+<<<<<<< HEAD
     "/api/products",
     createPublicProductRoutes({ productManagement: products }),
+=======
+    "/api/admin/pricing",
+    createAdminPricingRouter({ pricingAndDiscountManagement: pricing, authenticate }),
+  );
+  app.use(
+    "/api/pricing/public",
+    createPublicPricingRouter(pricing),
+>>>>>>> aacb238 (feat(cycle-3): implement Member 1 pricing and public discount management (FR-02, FR-03))
   );
   app.use(
     "/api/admin/inquiries",

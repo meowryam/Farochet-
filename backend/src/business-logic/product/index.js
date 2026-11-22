@@ -73,6 +73,7 @@ function createProductManagement({ repository, pricingAndDiscountManagement }) {
 
     createProduct: async (input) => {
       const product = normalizeProductInput(input, pricingAndDiscountManagement);
+      await pricingAndDiscountManagement.validateStandardPriceUpdate(product.basePrice);
       return repository.createProduct(product);
     },
 
@@ -82,6 +83,7 @@ function createProductManagement({ repository, pricingAndDiscountManagement }) {
       if (existing.isArchived) throw archivedProduct();
 
       const product = normalizeProductInput(input, pricingAndDiscountManagement);
+      await pricingAndDiscountManagement.validateStandardPriceUpdate(product.basePrice);
       return repository.updateProduct(id, product);
     },
 

@@ -46,6 +46,20 @@ async function archiveProduct(id) {
   });
 }
 
+async function getPublicDiscount() {
+  return getPrismaClient().publicDiscount.findUnique({
+    where: { id: "current" },
+  });
+}
+
+async function upsertPublicDiscount(data) {
+  return getPrismaClient().publicDiscount.upsert({
+    where: { id: "current" },
+    create: { id: "current", ...data },
+    update: data,
+  });
+}
+
 async function listInquiries() {
   return getPrismaClient().inquiry.findMany({
     include: { product: { select: { name: true } } },
@@ -464,6 +478,8 @@ const repository = {
   createProduct,
   updateProduct,
   archiveProduct,
+  getPublicDiscount,
+  upsertPublicDiscount,
   listInquiries,
   findInquiryById,
   upsertInquiry,
