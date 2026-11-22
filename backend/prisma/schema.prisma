@@ -27,9 +27,10 @@ model User {
   email       String    @unique
   displayName String
   role        UserRole  @default(CUSTOMER)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  inquiries   Inquiry[]
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  inquiries      Inquiry[]
+  customizations Customization[]
 }
 
 model CustomerRegistrationIntent {
@@ -64,17 +65,50 @@ model Product {
 }
 
 model Inquiry {
-  id         String   @id @default(uuid()) @db.Uuid
-  customerId String   @db.Uuid
-  customer   User     @relation(fields: [customerId], references: [id], onDelete: Restrict)
-  productId  String?  @db.Uuid
-  product    Product? @relation(fields: [productId], references: [id])
-  message    String
-  createdAt  DateTime @default(now())
-  orders     Order[]
+  id             String           @id @default(uuid()) @db.Uuid
+  customerId     String           @db.Uuid
+  customer       User             @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  productId      String?          @db.Uuid
+  product        Product?         @relation(fields: [productId], references: [id])
+  message        String
+  createdAt      DateTime         @default(now())
+  orders         Order[]
+  customizations Customization[]
 
   @@index([customerId, createdAt])
   @@index([productId])
+}
+
+model Customization {
+  id                     String               @id @default(uuid()) @db.Uuid
+  inquiryId              String               @db.Uuid
+  inquiry                Inquiry              @relation(fields: [inquiryId], references: [id], onDelete: Restrict)
+  productType            String
+  size                   String?
+  colour                 String?
+  materials              String?
+  quantity               Int
+  budget                 String?
+  specialInstructions    String?
+  requiredCompletionDate DateTime?
+  deliveryAddress        String?
+  referenceImages        String[]             @default([])
+  createdAt              DateTime             @default(now())
+  updatedAt              DateTime             @updatedAt
+  pendingOrderRequest    PendingOrderRequest?
+
+  @@index([inquiryId, createdAt])
+}
+
+model PendingOrderRequest {
+  id              String        @id @default(uuid()) @db.Uuid
+  customizationId String        @unique @db.Uuid
+  customization   Customization @relation(fields: [customizationId], references: [id], onDelete: Restrict)
+  status          String        @default("PENDING")
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@index([status, createdAt])
 }
 
 model Order {

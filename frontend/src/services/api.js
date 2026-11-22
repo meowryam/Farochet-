@@ -155,6 +155,13 @@ export function updateAdminManufacturingProgress(id, progress) {
   }).then((data) => data.order);
 }
 
+export function submitCustomizationRequest(details) {
+  return request("/customer/customization/requests", {
+    method: "POST",
+    body: JSON.stringify(details),
+  });
+}
+
 export function listMyOrders(token = getCustomerAccessToken()) {
   return request("/orders/my", {
     token,

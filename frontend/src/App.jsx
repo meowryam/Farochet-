@@ -5,6 +5,7 @@ import ProductManagementPage from "./features/catalogue/ProductManagementPage";
 import InquiryManagementPage from "./features/inquiries/InquiryManagementPage";
 import OrderManagementPage from "./features/orders/OrderManagementPage";
 import CustomerOrdersPage from "./features/orders/CustomerOrdersPage";
+import CustomizationRequestPage from "./features/customization/CustomizationRequestPage";
 import AvailabilityManagementPage from "./features/availability/AvailabilityManagementPage";
 import AvailabilityPage from "./features/availability/AvailabilityPage";
 import BootstrapStatusPage from "./pages/BootstrapStatusPage";
@@ -41,6 +42,10 @@ export default function App() {
           <Route
             path="/admin/orders"
             element={<RequireAuth roles={["RAAZIA"]}><OrderManagementPage /></RequireAuth>}
+          />
+          <Route
+            path="/customization/request"
+            element={<RequireAuth roles={["CUSTOMER"]}><CustomizationRequestPage /></RequireAuth>}
           />
           <Route path="/orders" element={<CustomerOrdersPage />} />
           <Route path="/availability" element={<AvailabilityPage />} />

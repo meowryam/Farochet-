@@ -68,6 +68,40 @@ async function upsertInquiry(id, data) {
   });
 }
 
+async function createCustomizationRequest({ inquiry, customization }) {
+  const prisma = getPrismaClient();
+
+  // The generated Prisma Client is refreshed by the coordinator after the
+  // Cycle 2 schema migration is applied. Fail clearly until then.
+  if (!prisma.customization || !prisma.pendingOrderRequest) {
+    const error = new Error(
+      "Customization records are not available in the generated Prisma Client.",
+    );
+    error.status = 503;
+    error.code = "CUSTOMIZATION_SCHEMA_NOT_AVAILABLE";
+    throw error;
+  }
+
+  return prisma.$transaction(async (transaction) => {
+    const createdInquiry = await transaction.inquiry.create({ data: inquiry });
+    const createdCustomization = await transaction.customization.create({
+      data: { ...customization, inquiryId: createdInquiry.id },
+    });
+    const pendingOrderRequest = await transaction.pendingOrderRequest.create({
+      data: {
+        customizationId: createdCustomization.id,
+        status: "PENDING",
+      },
+    });
+
+    return {
+      inquiry: createdInquiry,
+      customization: createdCustomization,
+      pendingOrderRequest,
+    };
+  });
+}
+
 async function listOrders() {
   return getPrismaClient().order.findMany({
     include: {
@@ -433,6 +467,7 @@ const repository = {
   listInquiries,
   findInquiryById,
   upsertInquiry,
+  createCustomizationRequest,
   listOrders,
   upsertOrder,
   findOrderById,

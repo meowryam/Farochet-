@@ -88,7 +88,7 @@ _Add new slice entries below._
 - **Owner:** Member 3.
 - **Plan version:** 1.3 (18 November 2026).
 - **Branch / Pull Request / merge:** Direct to main (no branches); commit 61aa571.
-- Author note: commit 61aa571 shows the author label i253009 because of local Git settings; the work was done by Member 3 (Wareesha).
+- Author note: Commit author label shows i253009 <i253009@isb.nu.edu.pk> because of local Git settings on the machine used. Correct GitHub account is WareeshaFatima. The pushed commit was not rewritten.
 - **HITL / AFK mode:** HITL.
 - **Reason for mode:** A shared-schema decision (missing User model) needed a human decision.
 - **AI chat/task reference:** OpenCode session for Member 3 Cycle 1; model: [to be filled in].
@@ -180,3 +180,40 @@ _Add new slice entries below._
 - **Major issue/change:** No schema or migration change was needed because the existing confirmed-Order model already contains all required fields. Live persistence and browser acceptance remain pending.
 - **Integration status:** Implemented locally in the working tree; no commit or push.
 - **Evidence link(s):** `backend/tests/orders.test.js`; `docs/evidence/Testing_Evidence_Log.md`; `frontend/src/features/orders/OrderManagementPage.jsx`.
+
+### C2-M3 — Customization Request Submission
+
+- **Related PRD requirements:** FR-09; plan.md Section 10 (Cycle 2, Member 3).
+- **Owner:** Member 3.
+- **Plan version:** Not supplied in this task.
+- **Branch / Pull Request / merge:** No commit or push (per task instructions).
+- **HITL / AFK mode:** AFK build by OpenCode in 4 stages (A schema, B backend, C tests, D frontend), with human review after each stage.
+- **Reason for mode:** Not supplied in this task.
+- **AI chat/task reference:** OpenCode agent — Cycle 2 Member 3, Customization Request Submission (FR-09).
+- **Context supplied to agent:** plan.md Section 10, ADR-006, a compact prompt with written decisions and rules (no migrations, no installs, no .env, no commit, STOP AND ASK). Agent was told not to re-read the whole repo.
+- **Acceptance criteria:** An authenticated Customer submits custom-order details; the system saves a Customization linked to its Inquiry plus a separate PendingOrderRequest (status pending, no inquiryId); no feasibility check, acceptance, pricing or Order creation; role and validation rules enforced.
+- **Important iterations/corrections:** OpenCode built the slice in 4 parts: A schema, B backend, C backend tests, D frontend.
+  - Agent's Part A summary claimed inquiryId was unique; schema review showed it is not. The agent's own question 8 was the correct one.
+- **Rejected/revised approach (if any):** Not supplied in this task.
+- **Files changed (11):** `backend/prisma/schema.prisma`; `backend/src/business-logic/customization/index.js`; `backend/src/data-access/repositories/index.ts`; `backend/src/data-access/storage/inMemoryImageStorage.js`; `backend/src/presentation/controllers/customization.controller.js`; `backend/src/presentation/routes/customization.routes.js`; `backend/src/app.js`; `backend/tests/customization.test.js`; `frontend/src/services/api.js`; `frontend/src/features/customization/CustomizationRequestPage.jsx`; `frontend/src/App.jsx`.
+- **Agent-report error found by human review:** The agent's Part A summary wrongly said `Customization.inquiryId` was unique; the schema file showed it is not.
+- **Human check by Wareesha:** Reviewed the `schema.prisma` diff by hand. `PendingOrderRequest` has `customizationId` (unique) and no `inquiryId`. `Customization.inquiryId` has NO `@unique`.
+- **Member 3 default, pending team confirmation:**
+  - Budget is stored as free text (`String?`), no numeric rule invented.
+  - Images are sent as base64 inside JSON, not multipart.
+  - The file picker is a plain inline file input, not a shared component.
+  - The form is reachable at `/customization/request` and not linked from the customer account page yet.
+- **Open items for the team — Pending:**
+  1. Coordinator adds `Customization` and `PendingOrderRequest` tables, then runs `prisma generate`.
+  2. Who builds the real Supabase Storage adapter (images are only in an in-memory stub now).
+  3. Confirm the pending status word "PENDING" before Cycle 3 depends on it.
+  4. Confirm whether `Customization.inquiryId` should get `@unique` before the migration.
+  5. Special instructions are saved twice (`Customization` and `Inquiry.message`), and the inquiry message is `""` when omitted. Member 2 should know because it touches `submitInquiry`.
+- **Tests/checks actually run:** Human-run by Wareesha: full backend test suite and frontend production build before and after Cycle 2.
+- **Actual results:** Before Cycle 2 — backend 64/64 tests passed; frontend build OK (102 modules). After Cycle 2 — backend 74/74 tests passed (10 new in `backend/tests/customization.test.js`); frontend build OK (103 modules).
+- **Not tested:** Real database (tables not migrated yet); real image upload; the form in a browser (update this line later if Wareesha tests it).
+- **Decision:** Accept / Revise / Reject
+- **Decision reason:** Not supplied in this task.
+- **Major issue/change:** Agent-report error on `Customization.inquiryId` uniqueness, found by human review.
+- **Integration status:** Implemented locally in the working tree; Customization and PendingOrderRequest tables not migrated yet; no commit or push.
+- **Evidence link(s):** `docs/evidence/Testing_Evidence_Log.md`; `backend/tests/customization.test.js`; `backend/prisma/schema.prisma`.

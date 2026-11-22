@@ -3,6 +3,7 @@ import cors from "cors";
 import repository from "./data-access/repositories/index.ts";
 import productManagement, { createProductManagement } from "./business-logic/product/index.js";
 import inquiryManagement, { createInquiryManagement } from "./business-logic/inquiry/index.js";
+import { createCustomizationAndQuotationManagement } from "./business-logic/customization/index.js";
 import orderManagement, { createOrderManagement } from "./business-logic/order/index.js";
 import availabilityManagement, { createAvailabilityManagement } from "./business-logic/availability/index.js";
 import statusManagement, { createStatusManagement } from "./business-logic/status/index.js";
@@ -15,17 +16,21 @@ import healthRoutes from "./presentation/routes/health.routes.js";
 import { createAuthRoutes } from "./presentation/routes/auth.routes.js";
 import { createProductRoutes } from "./presentation/routes/product.routes.js";
 import { createInquiryRoutes } from "./presentation/routes/inquiry.routes.js";
+import { createCustomizationRoutes } from "./presentation/routes/customization.routes.js";
 import { createOrderRoutes } from "./presentation/routes/order.routes.js";
 import { createAvailabilityRoutes } from "./presentation/routes/availability.routes.js";
 import { notFoundHandler } from "./presentation/middleware/notFoundHandler.js";
 import { errorHandler } from "./presentation/middleware/errorHandler.js";
+import { createInMemoryImageStorage } from "./data-access/storage/inMemoryImageStorage.js";
 
 export function createApp({
   dataRepository = repository,
   productManagement: productManagementOverride,
   inquiryManagement: inquiryManagementOverride,
+  customizationManagement: customizationManagementOverride,
   orderManagement: orderManagementOverride,
   availabilityManagement: availabilityManagementOverride,
+  imageStorage = createInMemoryImageStorage(),
   authenticate = authenticateRequest,
   authenticateCustomer = authenticate,
   verifyIdentity = createSupabaseIdentityVerification(),
@@ -44,6 +49,11 @@ export function createApp({
       ? inquiryManagement
       : createInquiryManagement({ repository: dataRepository })
   );
+  const customizations = customizationManagementOverride
+    ?? createCustomizationAndQuotationManagement({
+      repository: dataRepository,
+      imageStorage,
+    });
   const orders = orderManagementOverride ?? (
     dataRepository === repository
       ? orderManagement
@@ -107,6 +117,13 @@ export function createApp({
   app.use("/api/admin/availability", availabilityRoutes.adminRouter);
   app.use("/api/customer/availability", availabilityRoutes.customerRouter);
   app.use("/api/availability", availabilityRoutes.publicRouter);
+  app.use(
+    "/api/customer/customization",
+    createCustomizationRoutes({
+      customizationManagement: customizations,
+      authenticate: authenticateCustomer,
+    }),
+  );
   app.use("/api/customer/orders", orderRoutes.customerRouter);
   app.use("/api/orders", orderRoutes.customerRouter);
 
