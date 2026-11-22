@@ -186,7 +186,7 @@ _Add new slice entries below._
 - **Related PRD requirements:** FR-09; plan.md Section 10 (Cycle 2, Member 3).
 - **Owner:** Member 3.
 - **Plan version:** Not supplied in this task.
-- **Branch / Pull Request / merge:** No commit or push (per task instructions).
+- **Branch / Pull Request / merge:** Direct to main (no branches); commit 6dd7e1c, pushed 22 Nov 2026.
 - **HITL / AFK mode:** AFK build by OpenCode in 4 stages (A schema, B backend, C tests, D frontend), with human review after each stage.
 - **Reason for mode:** Not supplied in this task.
 - **AI chat/task reference:** OpenCode agent — Cycle 2 Member 3, Customization Request Submission (FR-09).
@@ -215,5 +215,5 @@ _Add new slice entries below._
 - **Decision:** Accept / Revise / Reject
 - **Decision reason:** Not supplied in this task.
 - **Major issue/change:** Agent-report error on `Customization.inquiryId` uniqueness, found by human review.
-- **Integration status:** Implemented locally in the working tree; Customization and PendingOrderRequest tables not migrated yet; no commit or push.
+- **Integration status:** Pushed to main as commit 6dd7e1c. Customization and PendingOrderRequest tables not migrated yet (pending the coordinator); real image storage pending.
 - **Evidence link(s):** `docs/evidence/Testing_Evidence_Log.md`; `backend/tests/customization.test.js`; `backend/prisma/schema.prisma`.
