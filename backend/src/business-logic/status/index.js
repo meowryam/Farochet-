@@ -7,6 +7,12 @@ const MANUFACTURING_STATUSES = new Set([
   "Cancelled",
   "On Hold",
 ]);
+const PAYMENT_STATUSES = new Set([
+  "Advance Payment Received",
+  "Partial Payment",
+  "Full Payment",
+  "Refunded",
+]);
 
 function statusError(message, status, code) {
   const error = new Error(message);
@@ -94,10 +100,41 @@ function createStatusManagement({ repository }) {
         updatedAt: updated.updatedAt,
       };
     },
+
+    updatePaymentStatus: async (viewer, orderId, input) => {
+      if (!viewer) {
+        throw statusError("Authentication is required.", 401, "AUTHENTICATION_REQUIRED");
+      }
+      if (viewer.role !== "RAAZIA") {
+        throw statusError("Only Raazia can update payment status.", 403, "PAYMENT_STATUS_UPDATE_DENIED");
+      }
+      if (!input || typeof input !== "object" || Array.isArray(input)
+        || !PAYMENT_STATUSES.has(input.paymentStatus)) {
+        throw statusError(
+          "Payment status must be Advance Payment Received, Partial Payment, Full Payment, or Refunded.",
+          400,
+          "INVALID_PAYMENT_STATUS",
+        );
+      }
+
+      const order = await repository.findOrderById(orderId);
+      if (!order) {
+        throw statusError("Order was not found.", 404, "ORDER_NOT_FOUND");
+      }
+
+      const updated = await repository.updateOrderPaymentStatus(orderId, input.paymentStatus);
+      return {
+        id: updated.id,
+        manufacturingStatus: updated.manufacturingStatus,
+        paymentStatus: updated.paymentStatus,
+        deliveryStatus: updated.deliveryStatus,
+        updatedAt: updated.updatedAt,
+      };
+    },
   };
 }
 
 const statusManagement = createStatusManagement({ repository });
 
 export default statusManagement;
-export { createStatusManagement, MANUFACTURING_STATUSES };
+export { createStatusManagement, MANUFACTURING_STATUSES, PAYMENT_STATUSES };

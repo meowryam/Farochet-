@@ -13,6 +13,7 @@ import {
   getAdminOrder,
   listAdminOrders,
   updateAdminManufacturingProgress,
+  updateAdminPaymentStatus,
 } from "../../services/api";
 
 const ORDER_NAV_ITEMS = [
@@ -46,6 +47,7 @@ export default function OrderManagementPage() {
   const [orders, setOrders] = useState([]);
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [manufacturingStatus, setManufacturingStatus] = useState("");
+  const [paymentStatus, setPaymentStatus] = useState("");
   const [estimatedCompletionDate, setEstimatedCompletionDate] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -84,6 +86,7 @@ export default function OrderManagementPage() {
       const order = await getAdminOrder(id);
       setSelectedOrder(order);
       setManufacturingStatus(order.manufacturingStatus);
+      setPaymentStatus(order.paymentStatus ?? "");
       setEstimatedCompletionDate(toDateInputValue(order.estimatedCompletionDate));
     } catch (detailError) {
       setError(detailError instanceof Error ? detailError.message : "Could not load order details.");
@@ -108,6 +111,25 @@ export default function OrderManagementPage() {
       setEstimatedCompletionDate(toDateInputValue(updated.estimatedCompletionDate));
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : "Could not update manufacturing progress.");
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  async function savePaymentStatus(event) {
+    event.preventDefault();
+    if (!selectedOrder) return;
+    setIsSaving(true);
+    setError("");
+    try {
+      const updated = await updateAdminPaymentStatus(selectedOrder.id, paymentStatus);
+      setSelectedOrder((current) => ({ ...(current ?? {}), ...updated }));
+      setOrders((current) => current.map((order) => (
+        order.id === updated.id ? { ...order, ...updated } : order
+      )));
+      setPaymentStatus(updated.paymentStatus);
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : "Could not update payment status.");
     } finally {
       setIsSaving(false);
     }
@@ -219,6 +241,27 @@ export default function OrderManagementPage() {
               <div className="catalogue-form-actions">
                 <Button type="submit" admin loading={isSaving} disabled={isSaving}>
                   Save manufacturing progress
+                </Button>
+              </div>
+            </form>
+            <form onSubmit={savePaymentStatus} className="catalogue-info-fields">
+              <SelectField
+                id={`payment-status-${selectedOrder.id}`}
+                label="Payment status"
+                value={paymentStatus}
+                onChange={(event) => setPaymentStatus(event.target.value)}
+                options={[
+                  { value: "Advance Payment Received", label: "Advance Payment Received" },
+                  { value: "Partial Payment", label: "Partial Payment" },
+                  { value: "Full Payment", label: "Full Payment" },
+                  { value: "Refunded", label: "Refunded" },
+                ]}
+                required
+              />
+              <p>Records a payment state only; it does not process a payment or refund.</p>
+              <div className="catalogue-form-actions">
+                <Button type="submit" admin loading={isSaving} disabled={isSaving}>
+                  Save payment status
                 </Button>
               </div>
             </form>

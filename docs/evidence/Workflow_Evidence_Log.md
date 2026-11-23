@@ -311,3 +311,17 @@ _Add new slice entries below._
 - **Major issue/change:** Human review found `getReferenceImageForViewer` used `return image ?? imageNotFound()`, which returns an error object instead of throwing when a recorded image has no stored file. Fixed to `if (!image) throw imageNotFound()`, and one test was added. The tests had not covered this case. No schema change, no migration needed.
 - **Integration status:** Implemented locally in the working tree; not committed or pushed. Branch / Pull Request / merge: Direct to main (no branches); commit hash to be added after push.
 - **Evidence link(s):** `docs/evidence/Testing_Evidence_Log.md`; `backend/tests/customization.test.js`.
+
+### C3-M4 — Payment Management
+
+- **Related PRD requirements:** FR-14, FR-15; ADR-003, ADR-005; plan.md Section 11.
+- **Owner:** Member 4.
+- **HITL / AFK mode:** AFK implementation and local automated verification; human acceptance pending.
+- **AI chat/task reference:** Current Copilot chat — Cycle 3 Member 4 Payment Management.
+- **Acceptance criteria:** Raazia can record only the four PRD payment states; NULL remains “Not yet recorded” until set; payment updates leave manufacturing and delivery unchanged; no payment or refund is processed.
+- **Implementation:** Added a Raazia-only `PATCH /api/admin/orders/:id/payment-status` route through Status Management and the centralized Repository, plus a payment-state selector in the existing admin Order details view. No new Business Logic component or Order field was added.
+- **Tests/checks actually run:** Focused backend order tests (13 passed); full backend suite with one Vitest thread worker (12 files / 117 tests passed); frontend production build passed (110 modules); `git diff --check` passed. A default-parallel backend run exhausted the environment's Node worker memory; the single-worker run passed. Frontend unit tests were not run because the frontend `vitest` executable is unavailable in the current install.
+- **Database integration limitation:** The configured `farochet_runtime` role has no Order-table privileges. Live payment persistence therefore remains unavailable: this operation needs permitted access to `public."Order"` (including updating `paymentStatus`). No migration, grants/permissions, or credentials were changed. API behavior was tested using the in-memory repository only.
+- **Human decision:** Pending Accept / Revise / Reject.
+- **Integration status:** Local working tree only; live database behavior and browser acceptance unverified.
+- **Evidence link(s):** `backend/tests/orders.test.js`; `frontend/src/features/orders/OrderManagementPage.jsx`; `docs/evidence/Testing_Evidence_Log.md`.

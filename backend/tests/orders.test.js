@@ -30,6 +30,13 @@ function createMemoryRepository() {
       Object.assign(order, data, { updatedAt: new Date() });
       return hydrateOrder(order);
     },
+
+    async updateOrderPaymentStatus(id, paymentStatus) {
+      const order = orders.find((item) => item.id === id);
+      if (!order) return null;
+      Object.assign(order, { paymentStatus, updatedAt: new Date() });
+      return hydrateOrder(order);
+    },
   };
 
   function hydrateOrder(order) {
@@ -255,6 +262,75 @@ describe("Confirmed Order ownership and status independence", () => {
         expect(body.order.paymentStatus).toBe("Partial Payment");
         expect(body.order.deliveryStatus).toBeNull();
       });
+  });
+
+  it("lets Raazia record each approved payment state without changing the other Order statuses", async () => {
+    const dataRepository = createMemoryRepository();
+    const app = createApp({ dataRepository, authenticate: raaziaSession });
+    const { order } = seedOrder(dataRepository, {
+      order: {
+        manufacturingStatus: "In Progress",
+        deliveryStatus: "Delivered",
+      },
+    });
+
+    for (const paymentStatus of [
+      "Advance Payment Received",
+      "Partial Payment",
+      "Full Payment",
+      "Refunded",
+    ]) {
+      await request(app)
+        .patch(`/api/admin/orders/${order.id}/payment-status`)
+        .send({ paymentStatus })
+        .expect(200)
+        .expect(({ body }) => {
+          expect(body.order).toMatchObject({
+            manufacturingStatus: "In Progress",
+            paymentStatus,
+            deliveryStatus: "Delivered",
+          });
+        });
+    }
+
+    expect(order.manufacturingStatus).toBe("In Progress");
+    expect(order.deliveryStatus).toBe("Delivered");
+  });
+
+  it("rejects unsupported or extra payment fields and non-Raazia updates", async () => {
+    const dataRepository = createMemoryRepository();
+    const { order } = seedOrder(dataRepository);
+    const app = createApp({ dataRepository, authenticate: raaziaSession });
+
+    for (const paymentStatus of ["UNPAID", "PAID"]) {
+      await request(app)
+        .patch(`/api/admin/orders/${order.id}/payment-status`)
+        .send({ paymentStatus })
+        .expect(400);
+    }
+    await request(app)
+      .patch(`/api/admin/orders/${order.id}/payment-status`)
+      .send({ paymentStatus: "Partial Payment", amount: 1000 })
+      .expect(400);
+    await request(app)
+      .patch(`/api/admin/orders/${randomUUID()}/payment-status`)
+      .send({ paymentStatus: "Partial Payment" })
+      .expect(404);
+
+    const customerApp = createApp({
+      dataRepository,
+      authenticate: customerSession(randomUUID()),
+    });
+    await request(customerApp)
+      .patch(`/api/admin/orders/${order.id}/payment-status`)
+      .send({ paymentStatus: "Partial Payment" })
+      .expect(403);
+
+    const unauthenticatedApp = createApp({ dataRepository });
+    await request(unauthenticatedApp)
+      .patch(`/api/admin/orders/${order.id}/payment-status`)
+      .send({ paymentStatus: "Partial Payment" })
+      .expect(401);
   });
 
   it("rejects invalid, empty, malformed-date, and missing manufacturing progress updates", async () => {

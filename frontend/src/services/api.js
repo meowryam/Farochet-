@@ -209,6 +209,13 @@ export function updateAdminManufacturingProgress(id, progress) {
   }).then((data) => data.order);
 }
 
+export function updateAdminPaymentStatus(id, paymentStatus) {
+  return request(`/admin/orders/${encodeURIComponent(id)}/payment-status`, {
+    method: "PATCH",
+    body: JSON.stringify({ paymentStatus }),
+  }).then((data) => data.order);
+}
+
 export function submitCustomizationRequest(details) {
   return request("/customer/customization/requests", {
     method: "POST",

@@ -252,6 +252,13 @@ async function updateOrderManufacturing(id, data) {
   });
 }
 
+async function updateOrderPaymentStatus(id, paymentStatus) {
+  return getPrismaClient().order.update({
+    where: { id },
+    data: { paymentStatus },
+  });
+}
+
 function wishlistSchemaUnavailable(cause) {
   const error = new Error(
     "Wishlist storage is not initialized. Please contact the administrator to apply the Wishlist database migration.",
@@ -673,6 +680,7 @@ const repository = {
   upsertOrder,
   findOrderById,
   updateOrderManufacturing,
+  updateOrderPaymentStatus,
   addWishlistItem,
   listWishlistItems,
   removeWishlistItem,

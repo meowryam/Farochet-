@@ -29,6 +29,15 @@ const manufacturingProgressSchema = z.object({
   { message: "Provide a manufacturing status or Estimated Completion Date." },
 );
 
+const paymentStatusSchema = z.object({
+  paymentStatus: z.enum([
+    "Advance Payment Received",
+    "Partial Payment",
+    "Full Payment",
+    "Refunded",
+  ]),
+}).strict();
+
 function createOrderController(orderManagement, statusManagement) {
   return {
     list: async (req, res) => {
@@ -60,7 +69,31 @@ function createOrderController(orderManagement, statusManagement) {
       );
       res.json({ order });
     },
+    updatePaymentStatus: async (req, res) => {
+      const id = parseOrderId(req, res);
+      if (!id) return;
+      const parsed = paymentStatusSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({
+          error: {
+            code: "VALIDATION_ERROR",
+            message: parsed.error.issues.map((issue) => issue.message).join(" "),
+          },
+        });
+      }
+      const order = await statusManagement.updatePaymentStatus(
+        req.authenticatedUser,
+        id,
+        parsed.data,
+      );
+      res.json({ order });
+    },
   };
 }
 
-export { createOrderController, manufacturingProgressSchema, orderIdSchema };
+export {
+  createOrderController,
+  manufacturingProgressSchema,
+  orderIdSchema,
+  paymentStatusSchema,
+};
