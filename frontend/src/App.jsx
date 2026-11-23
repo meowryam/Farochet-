@@ -6,6 +6,7 @@ import InquiryManagementPage from "./features/inquiries/InquiryManagementPage";
 import OrderManagementPage from "./features/orders/OrderManagementPage";
 import CustomerOrdersPage from "./features/orders/CustomerOrdersPage";
 import CustomizationRequestPage from "./features/customization/CustomizationRequestPage";
+import CustomizationReviewPage from "./features/customization/CustomizationReviewPage";
 import AvailabilityManagementPage from "./features/availability/AvailabilityManagementPage";
 import AvailabilityPage from "./features/availability/AvailabilityPage";
 import BootstrapStatusPage from "./pages/BootstrapStatusPage";
@@ -40,6 +41,10 @@ export default function App() {
           <Route
             path="/admin/inquiries"
             element={<RequireAuth roles={["RAAZIA"]}><InquiryManagementPage /></RequireAuth>}
+          />
+          <Route
+            path="/admin/customization-requests"
+            element={<RequireAuth roles={["RAAZIA"]}><CustomizationReviewPage /></RequireAuth>}
           />
           <Route
             path="/admin/orders"

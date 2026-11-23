@@ -3,6 +3,9 @@ import { z } from "zod";
 const MAX_REFERENCE_IMAGES = 5;
 const MAX_REFERENCE_IMAGE_BYTES = 2 * 1024 * 1024;
 
+const customizationIdSchema = z.string().uuid();
+const imagePathSchema = z.string().min(1);
+
 const referenceImageSchema = z.object({
   name: z.string().trim().min(1, "Image name is required."),
   contentType: z.enum(["image/jpeg", "image/png", "image/webp"]),
@@ -58,6 +61,26 @@ function parseCustomizationBody(req, res) {
   return parsed.data;
 }
 
+function parseCustomizationId(req, res) {
+  const parsed = customizationIdSchema.safeParse(req.params.id);
+  if (!parsed.success) {
+    return badRequestForCustomization(res, "Customization request ID must be a valid UUID.", "INVALID_CUSTOMIZATION_ID");
+  }
+  return parsed.data;
+}
+
+function parseImagePath(req, res) {
+  const parsed = imagePathSchema.safeParse(req.query.path);
+  if (!parsed.success) {
+    return badRequestForCustomization(res, "A reference image path is required.", "INVALID_IMAGE_PATH");
+  }
+  return parsed.data;
+}
+
+function badRequestForCustomization(res, message, code) {
+  return res.status(400).json({ error: { code, message } });
+}
+
 function createCustomizationController(customizationManagement) {
   return {
     submit: async (req, res) => {
@@ -70,7 +93,35 @@ function createCustomizationController(customizationManagement) {
       );
       return res.status(201).json(result);
     },
+
+    list: async (req, res) => {
+      const requests = await customizationManagement.listPendingRequests(req.authenticatedUser);
+      return res.json({ requests });
+    },
+
+    get: async (req, res) => {
+      const id = parseCustomizationId(req, res);
+      if (!id) return;
+      const request = await customizationManagement.getRequestForViewer(req.authenticatedUser, id);
+      return res.json({ request });
+    },
+
+    getImage: async (req, res) => {
+      const imagePath = parseImagePath(req, res);
+      if (!imagePath) return;
+      const image = await customizationManagement.getReferenceImageForViewer(
+        req.authenticatedUser,
+        imagePath,
+      );
+      return res.json({ image });
+    },
   };
 }
 
-export { createCustomizationController, customizationInputSchema, referenceImageSchema };
+export {
+  createCustomizationController,
+  customizationInputSchema,
+  referenceImageSchema,
+  customizationIdSchema,
+  imagePathSchema,
+};

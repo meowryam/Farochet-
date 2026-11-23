@@ -33,6 +33,15 @@ function createInMemoryImageStorage() {
         };
       });
     },
+
+    /**
+     * Backend-mediated retrieval of a stored object by its persisted path.
+     * Returns metadata plus the stored bytes; it never produces a public URL.
+     */
+    getImage(path) {
+      const object = objects.get(path);
+      return object ? { ...object } : null;
+    },
   };
 }
 

@@ -216,6 +216,20 @@ export function submitCustomizationRequest(details) {
   });
 }
 
+export function listAdminCustomizationRequests() {
+  return request("/admin/customization/requests").then((data) => data.requests);
+}
+
+export function getAdminCustomizationRequest(id) {
+  return request(`/admin/customization/requests/${encodeURIComponent(id)}`)
+    .then((data) => data.request);
+}
+
+export function getAdminCustomizationImage(path) {
+  return request(`/admin/customization/images?path=${encodeURIComponent(path)}`)
+    .then((data) => data.image);
+}
+
 export function listMyOrders(token = getCustomerAccessToken()) {
   return request("/orders/my", {
     token,

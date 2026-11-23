@@ -18,7 +18,10 @@ import healthRoutes from "./presentation/routes/health.routes.js";
 import { createAuthRoutes } from "./presentation/routes/auth.routes.js";
 import { createProductRoutes, createPublicProductRoutes } from "./presentation/routes/product.routes.js";
 import { createInquiryRoutes } from "./presentation/routes/inquiry.routes.js";
-import { createCustomizationRoutes } from "./presentation/routes/customization.routes.js";
+import {
+  createCustomizationRoutes,
+  createAdminCustomizationRoutes,
+} from "./presentation/routes/customization.routes.js";
 import { createOrderRoutes } from "./presentation/routes/order.routes.js";
 import { createAvailabilityRoutes } from "./presentation/routes/availability.routes.js";
 import {
@@ -145,6 +148,13 @@ export function createApp({
   app.use("/api/admin/availability", availabilityRoutes.adminRouter);
   app.use("/api/customer/availability", availabilityRoutes.customerRouter);
   app.use("/api/availability", availabilityRoutes.publicRouter);
+  app.use(
+    "/api/admin/customization",
+    createAdminCustomizationRoutes({
+      customizationManagement: customizations,
+      authenticate,
+    }),
+  );
   app.use(
     "/api/customer/customization",
     createCustomizationRoutes({

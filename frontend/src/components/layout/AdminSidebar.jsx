@@ -5,6 +5,7 @@ export const ADMIN_NAV_ITEMS = [
   { label: "Products", href: "/admin/products", key: "products" },
   { label: "Availability", href: "/admin/availability", key: "availability" },
   { label: "Inquiries", href: "/admin/inquiries", key: "inquiries" },
+  { label: "Requests", href: "/admin/customization-requests", key: "requests" },
   { label: "Orders", href: "/admin/orders", key: "orders" },
 ];
 

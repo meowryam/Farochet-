@@ -84,17 +84,7 @@ async function upsertInquiry(id, data) {
 
 async function createCustomizationRequest({ inquiry, customization }) {
   const prisma = getPrismaClient();
-
-  // The generated Prisma Client is refreshed by the coordinator after the
-  // Cycle 2 schema migration is applied. Fail clearly until then.
-  if (!prisma.customization || !prisma.pendingOrderRequest) {
-    const error = new Error(
-      "Customization records are not available in the generated Prisma Client.",
-    );
-    error.status = 503;
-    error.code = "CUSTOMIZATION_SCHEMA_NOT_AVAILABLE";
-    throw error;
-  }
+  assertCustomizationSchema(prisma);
 
   return prisma.$transaction(async (transaction) => {
     const createdInquiry = await transaction.inquiry.create({ data: inquiry });
@@ -114,6 +104,111 @@ async function createCustomizationRequest({ inquiry, customization }) {
       pendingOrderRequest,
     };
   });
+}
+
+function assertCustomizationSchema(prisma) {
+  // The generated Prisma Client is refreshed by the coordinator after the
+  // Cycle 2 schema migration is applied. Fail clearly until then.
+  if (!prisma.customization || !prisma.pendingOrderRequest) {
+    const error = new Error(
+      "Customization records are not available in the generated Prisma Client.",
+    );
+    error.status = 503;
+    error.code = "CUSTOMIZATION_SCHEMA_NOT_AVAILABLE";
+    throw error;
+  }
+}
+
+const customizationRequestInclude = {
+  customization: {
+    include: {
+      inquiry: {
+        include: {
+          customer: { select: { id: true, displayName: true } },
+        },
+      },
+    },
+  },
+};
+
+// Normalize the Prisma join into the read model owned by Customization and
+// Quotation Management. No business decision is made here.
+function mapCustomizationRequest(request) {
+  if (!request) return null;
+
+  const customization = request.customization ?? null;
+  const inquiry = customization?.inquiry ?? null;
+
+  return {
+    id: request.id,
+    status: request.status,
+    createdAt: request.createdAt,
+    updatedAt: request.updatedAt,
+    customization: customization ? {
+      id: customization.id,
+      inquiryId: customization.inquiryId,
+      productType: customization.productType,
+      size: customization.size,
+      colour: customization.colour,
+      materials: customization.materials,
+      quantity: customization.quantity,
+      budget: customization.budget,
+      specialInstructions: customization.specialInstructions,
+      requiredCompletionDate: customization.requiredCompletionDate,
+      deliveryAddress: customization.deliveryAddress,
+      referenceImages: customization.referenceImages,
+      createdAt: customization.createdAt,
+      updatedAt: customization.updatedAt,
+    } : null,
+    inquiry: inquiry ? {
+      id: inquiry.id,
+      message: inquiry.message,
+      createdAt: inquiry.createdAt,
+      customerId: inquiry.customerId,
+      customer: inquiry.customer
+        ? { id: inquiry.customer.id, displayName: inquiry.customer.displayName }
+        : null,
+    } : null,
+  };
+}
+
+async function listPendingCustomizationRequests() {
+  const prisma = getPrismaClient();
+  assertCustomizationSchema(prisma);
+
+  const requests = await prisma.pendingOrderRequest.findMany({
+    where: { status: "PENDING" },
+    include: customizationRequestInclude,
+    orderBy: [{ createdAt: "desc" }, { id: "asc" }],
+  });
+
+  return requests.map(mapCustomizationRequest);
+}
+
+async function findCustomizationRequestById(id) {
+  const prisma = getPrismaClient();
+  assertCustomizationSchema(prisma);
+
+  const request = await prisma.pendingOrderRequest.findUnique({
+    where: { id },
+    include: customizationRequestInclude,
+  });
+
+  return mapCustomizationRequest(request);
+}
+
+async function findCustomizationByReferenceImage(imagePath) {
+  const prisma = getPrismaClient();
+  assertCustomizationSchema(prisma);
+
+  const customization = await prisma.customization.findFirst({
+    where: { referenceImages: { has: imagePath } },
+    include: { inquiry: { select: { customerId: true } } },
+  });
+
+  return customization
+    ? { id: customization.id, inquiry: customization.inquiry }
+    : null;
 }
 
 async function listOrders() {
@@ -571,6 +666,9 @@ const repository = {
   findInquiryById,
   upsertInquiry,
   createCustomizationRequest,
+  listPendingCustomizationRequests,
+  findCustomizationRequestById,
+  findCustomizationByReferenceImage,
   listOrders,
   upsertOrder,
   findOrderById,

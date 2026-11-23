@@ -5,17 +5,44 @@ import { createApp } from "../src/app.js";
 import { createInMemoryImageStorage } from "../src/data-access/storage/inMemoryImageStorage.js";
 
 const CUSTOMER_ID = "11111111-1111-4111-8111-111111111111";
+const OTHER_CUSTOMER_ID = "22222222-2222-4222-8222-222222222222";
+const RAAZIA_ID = "33333333-3333-4333-8333-333333333333";
 const MAX_IMAGE_BYTES = 2 * 1024 * 1024;
 
 function createMemoryRepository() {
   const inquiries = [];
   const customizations = [];
   const pendingOrderRequests = [];
+  const users = new Map();
+  const orders = [];
+
+  function decorate(request) {
+    const customization = customizations.find((item) => item.id === request.customizationId) ?? null;
+    const inquiry = inquiries.find((item) => item.id === customization?.inquiryId) ?? null;
+    const user = users.get(inquiry?.customerId) ?? null;
+
+    return {
+      id: request.id,
+      status: request.status,
+      createdAt: request.createdAt,
+      updatedAt: request.updatedAt,
+      customization: customization ? { ...customization } : null,
+      inquiry: inquiry ? {
+        id: inquiry.id,
+        message: inquiry.message,
+        createdAt: inquiry.createdAt,
+        customerId: inquiry.customerId,
+        customer: user ? { id: user.id, displayName: user.displayName } : null,
+      } : null,
+    };
+  }
 
   return {
     inquiries,
     customizations,
     pendingOrderRequests,
+    users,
+    orders,
 
     async createCustomizationRequest({ inquiry, customization }) {
       const createdInquiry = { id: randomUUID(), createdAt: new Date(), ...inquiry };
@@ -39,6 +66,29 @@ function createMemoryRepository() {
       pendingOrderRequests.push(pendingOrderRequest);
 
       return { inquiry: createdInquiry, customization: createdCustomization, pendingOrderRequest };
+    },
+
+    async listPendingCustomizationRequests() {
+      return pendingOrderRequests
+        .filter((request) => request.status === "PENDING")
+        .slice()
+        .sort((left, right) => right.createdAt - left.createdAt)
+        .map(decorate);
+    },
+
+    async findCustomizationRequestById(id) {
+      const request = pendingOrderRequests.find((item) => item.id === id);
+      return request ? decorate(request) : null;
+    },
+
+    async findCustomizationByReferenceImage(imagePath) {
+      const customization = customizations.find((item) => item.referenceImages?.includes(imagePath));
+      if (!customization) return null;
+      const inquiry = inquiries.find((item) => item.id === customization.inquiryId);
+      return {
+        id: customization.id,
+        inquiry: inquiry ? { customerId: inquiry.customerId } : null,
+      };
     },
   };
 }
@@ -67,6 +117,39 @@ function validBody(overrides = {}) {
     referenceImages: [image()],
     ...overrides,
   };
+}
+
+async function seedReviewRequest(
+  dataRepository,
+  imageStorage,
+  {
+    customerId = CUSTOMER_ID,
+    displayName = "Ayesha",
+    productType = "Crochet rose bouquet",
+    message = "Please match the reference photo.",
+    createdAt = new Date(),
+  } = {},
+) {
+  const stored = await imageStorage.storeImages({ customerId, images: [image()] });
+  const created = await dataRepository.createCustomizationRequest({
+    inquiry: { customerId, message },
+    customization: {
+      productType,
+      size: "30 cm",
+      colour: "Ivory",
+      materials: "Cotton yarn",
+      quantity: 2,
+      budget: "5000 PKR",
+      specialInstructions: message,
+      requiredCompletionDate: new Date("2026-12-20"),
+      deliveryAddress: "Lahore",
+      referenceImages: stored.map((storedImage) => storedImage.path),
+    },
+  });
+
+  created.pendingOrderRequest.createdAt = createdAt;
+  dataRepository.users.set(customerId, { id: customerId, displayName });
+  return created;
 }
 
 function session(userId, role) {
@@ -210,5 +293,243 @@ describe("Customization Request Submission API (FR-09)", () => {
       .post("/api/customer/customization/requests")
       .send(validBody())
       .expect(401);
+  });
+});
+
+describe("Customization Request Review API (FR-10)", () => {
+  let dataRepository;
+  let imageStorage;
+  let seeded;
+  let adminApp;
+  let ownerApp;
+  let otherApp;
+  let imagePath;
+
+  beforeEach(async () => {
+    dataRepository = createMemoryRepository();
+    imageStorage = createInMemoryImageStorage();
+    seeded = await seedReviewRequest(dataRepository, imageStorage);
+    imagePath = seeded.customization.referenceImages[0];
+
+    adminApp = createApp({
+      dataRepository,
+      imageStorage,
+      authenticate: session(RAAZIA_ID, "RAAZIA"),
+    });
+    ownerApp = createApp({
+      dataRepository,
+      imageStorage,
+      authenticateCustomer: session(CUSTOMER_ID, "CUSTOMER"),
+    });
+    otherApp = createApp({
+      dataRepository,
+      imageStorage,
+      authenticateCustomer: session(OTHER_CUSTOMER_ID, "CUSTOMER"),
+    });
+  });
+
+  it("lists pending requests for Raazia, newest first, with customer name and stored status", async () => {
+    await seedReviewRequest(dataRepository, imageStorage, {
+      customerId: OTHER_CUSTOMER_ID,
+      displayName: "Sana",
+      productType: "Crochet table runner",
+      createdAt: new Date(Date.now() - 60_000),
+    });
+
+    const response = await request(adminApp)
+      .get("/api/admin/customization/requests")
+      .expect(200);
+
+    expect(response.body.requests).toHaveLength(2);
+    expect(response.body.requests[0]).toMatchObject({
+      id: seeded.pendingOrderRequest.id,
+      status: "PENDING",
+      customization: {
+        productType: seeded.customization.productType,
+        materials: seeded.customization.materials,
+        quantity: seeded.customization.quantity,
+      },
+      inquiry: {
+        message: seeded.inquiry.message,
+        customer: { displayName: "Ayesha" },
+      },
+    });
+    expect(response.body.requests[1].inquiry.customer.displayName).toBe("Sana");
+  });
+
+  it("opens a request in detail for Raazia with all submitted information", async () => {
+    const response = await request(adminApp)
+      .get(`/api/admin/customization/requests/${seeded.pendingOrderRequest.id}`)
+      .expect(200);
+
+    const { request: detail } = response.body;
+    expect(detail).toMatchObject({
+      id: seeded.pendingOrderRequest.id,
+      status: "PENDING",
+      customization: {
+        id: seeded.customization.id,
+        inquiryId: seeded.inquiry.id,
+        productType: seeded.customization.productType,
+        size: "30 cm",
+        colour: "Ivory",
+        materials: "Cotton yarn",
+        quantity: 2,
+        budget: "5000 PKR",
+        specialInstructions: seeded.inquiry.message,
+        deliveryAddress: "Lahore",
+        referenceImages: [imagePath],
+      },
+      inquiry: {
+        id: seeded.inquiry.id,
+        message: seeded.inquiry.message,
+        customer: { displayName: "Ayesha" },
+      },
+    });
+    expect(detail.customization).toHaveProperty("requiredCompletionDate");
+    expect(detail.customization).not.toHaveProperty("feasibility");
+    expect(detail.customization).not.toHaveProperty("decision");
+  });
+
+  it("returns the safe not-found error for a nonexistent request", async () => {
+    const response = await request(adminApp)
+      .get(`/api/admin/customization/requests/${randomUUID()}`)
+      .expect(404);
+
+    expect(response.body.error).toEqual({
+      code: "CUSTOMIZATION_REQUEST_NOT_FOUND",
+      message: "Customization request was not found.",
+    });
+  });
+
+  it("rejects a malformed request id", async () => {
+    const response = await request(adminApp)
+      .get("/api/admin/customization/requests/not-a-uuid")
+      .expect(400);
+
+    expect(response.body.error.code).toBe("INVALID_CUSTOMIZATION_ID");
+  });
+
+  it("gives Raazia access to a stored reference image without a public URL", async () => {
+    const response = await request(adminApp)
+      .get("/api/admin/customization/images")
+      .query({ path: imagePath })
+      .expect(200);
+
+    expect(response.body.image).toMatchObject({
+      path: imagePath,
+      contentType: "image/png",
+      sizeBytes: 16,
+    });
+    expect(response.body.image).toHaveProperty("base64");
+    expect(response.body.image).not.toHaveProperty("url");
+    expect(response.body.image).not.toHaveProperty("publicUrl");
+  });
+
+  it("gives the owning customer access to their own reference image", async () => {
+    const response = await request(ownerApp)
+      .get("/api/customer/customization/images")
+      .query({ path: imagePath })
+      .expect(200);
+
+    expect(response.body.image).toMatchObject({ path: imagePath });
+    expect(response.body.image).not.toHaveProperty("url");
+  });
+
+  it("returns 404 when a recorded reference image has no stored bytes", async () => {
+    const emptyImageStorage = createInMemoryImageStorage();
+    const emptyAdminApp = createApp({
+      dataRepository,
+      imageStorage: emptyImageStorage,
+      authenticate: session(RAAZIA_ID, "RAAZIA"),
+    });
+    const emptyOwnerApp = createApp({
+      dataRepository,
+      imageStorage: emptyImageStorage,
+      authenticateCustomer: session(CUSTOMER_ID, "CUSTOMER"),
+    });
+
+    const adminResponse = await request(emptyAdminApp)
+      .get("/api/admin/customization/images")
+      .query({ path: imagePath })
+      .expect(404);
+    const customerResponse = await request(emptyOwnerApp)
+      .get("/api/customer/customization/images")
+      .query({ path: imagePath })
+      .expect(404);
+
+    expect(adminResponse.body.error).toEqual({
+      code: "CUSTOMIZATION_IMAGE_NOT_FOUND",
+      message: "Reference image was not found.",
+    });
+    expect(customerResponse.body.error).toEqual(adminResponse.body.error);
+  });
+
+  it("refuses another customer's request detail and reference image with the same safe error", async () => {
+    const detail = await request(otherApp)
+      .get(`/api/customer/customization/requests/${seeded.pendingOrderRequest.id}`)
+      .expect(404);
+    const missingDetail = await request(adminApp)
+      .get(`/api/admin/customization/requests/${randomUUID()}`)
+      .expect(404);
+    const image = await request(otherApp)
+      .get("/api/customer/customization/images")
+      .query({ path: imagePath })
+      .expect(404);
+
+    expect(detail.body.error).toEqual(missingDetail.body.error);
+    expect(image.body.error.code).toBe("CUSTOMIZATION_IMAGE_NOT_FOUND");
+  });
+
+  it("refuses unauthenticated review and detail requests", async () => {
+    const anonymousApp = createApp({ dataRepository, imageStorage });
+
+    await request(anonymousApp)
+      .get("/api/admin/customization/requests")
+      .expect(401);
+    await request(anonymousApp)
+      .get(`/api/customer/customization/requests/${seeded.pendingOrderRequest.id}`)
+      .expect(401);
+  });
+
+  it("refuses the Raazia-only list for a customer", async () => {
+    const customerAsAdminApp = createApp({
+      dataRepository,
+      imageStorage,
+      authenticate: session(CUSTOMER_ID, "CUSTOMER"),
+    });
+
+    const response = await request(customerAsAdminApp)
+      .get("/api/admin/customization/requests")
+      .expect(403);
+
+    expect(response.body.error.code).toBe("FORBIDDEN");
+  });
+
+  it("review access never changes the stored status and never creates an Order", async () => {
+    await request(adminApp).get("/api/admin/customization/requests").expect(200);
+    await request(adminApp)
+      .get(`/api/admin/customization/requests/${seeded.pendingOrderRequest.id}`)
+      .expect(200);
+    await request(adminApp)
+      .get("/api/admin/customization/images")
+      .query({ path: imagePath })
+      .expect(200);
+
+    expect(dataRepository.pendingOrderRequests).toHaveLength(1);
+    expect(dataRepository.pendingOrderRequests[0].status).toBe("PENDING");
+    expect(dataRepository.orders).toHaveLength(0);
+    expect(dataRepository).not.toHaveProperty("createOrder");
+  });
+
+  it("exposes no delete route for a customization request or pending request", async () => {
+    await request(adminApp)
+      .delete(`/api/admin/customization/requests/${seeded.pendingOrderRequest.id}`)
+      .expect(404);
+    await request(ownerApp)
+      .delete(`/api/customer/customization/requests/${seeded.pendingOrderRequest.id}`)
+      .expect(404);
+
+    expect(dataRepository.customizations).toHaveLength(1);
+    expect(dataRepository.pendingOrderRequests).toHaveLength(1);
   });
 });
