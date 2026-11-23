@@ -2,19 +2,47 @@ import React from "react";
 import FarochetLogo from "../brand/FarochetLogo";
 
 export const ADMIN_NAV_ITEMS = [
-  { label: "Products", href: "/admin/products", key: "products" },
-  { label: "Availability", href: "/admin/availability", key: "availability" },
-  { label: "Inquiries", href: "/admin/inquiries", key: "inquiries" },
-  { label: "Requests", href: "/admin/customization-requests", key: "requests" },
-  { label: "Orders", href: "/admin/orders", key: "orders" },
+  { label: "Product Management", href: "/admin/products", key: "products" },
+  { label: "Availability Management", href: "/admin/availability", key: "availability" },
+  { label: "Customer Inquiries", href: "/admin/inquiries", key: "inquiries" },
+  { label: "Customization Requests", href: "/admin/customization-requests", key: "requests" },
+  { label: "Confirmed Orders", href: "/admin/orders", key: "orders" },
 ];
 
-export default function AdminSidebar({ activeKey, navItems = ADMIN_NAV_ITEMS, logoutHref = "/logout", open = false, onNavigate }) {
+export default function AdminSidebar({
+  activeKey,
+  logoutHref = null,
+  open = false,
+  onNavigate,
+  onClose,
+  sidebarRef,
+  ...props
+}) {
   return (
-    <aside className={`faro-admin__sidebar ${open ? "is-open" : ""}`.trim()}>
-      <FarochetLogo href="/admin" />
+    <aside
+      {...props}
+      ref={sidebarRef}
+      id="admin-navigation"
+      className={`faro-admin__sidebar ${open ? "is-open" : ""}`.trim()}
+      role={open ? "dialog" : undefined}
+      aria-modal={open ? "true" : undefined}
+      aria-label="Admin navigation"
+      aria-hidden={open ? undefined : "true"}
+      inert={!open}
+    >
+      <div className="faro-admin__sidebar-header">
+        <FarochetLogo href="/admin" />
+        <button
+          type="button"
+          className="faro-admin__close"
+          aria-label="Close admin navigation"
+          onClick={onClose}
+        >
+          Close
+        </button>
+      </div>
       <nav className="faro-admin__nav" aria-label="Admin navigation">
-        {navItems.map((item) => (
+        {ADMIN_NAV_ITEMS.map((item) => (
           <a
             key={item.key}
             href={item.href}

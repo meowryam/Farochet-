@@ -31,6 +31,38 @@ Use one entry per vertical slice. Keep evidence concise but sufficient to recons
 
 _Add new slice entries below._
 
+### Cycle 2 — Member 2 Customer Inquiry Submission
+
+- **Related PRD requirements:** FR-05; supports FR-06 and FR-08.
+- **Owner:** Member 2.
+- **Plan version:** 2.3 (23 November 2026).
+- **Branch / Pull Request / merge:** `main` working tree; no commit or pull request created.
+- **HITL / AFK mode:** HITL implementation with local verification.
+- **Reason for mode:** This slice adds customer-facing persistence and ownership behavior to the shared Inquiry component.
+- **AI chat/task reference:** Current Copilot chat — Member 2 Cycle 2 Customer Inquiry Submission.
+- **Context supplied to agent:** PRD v1.4; architecture; ADR-002, ADR-004 and ADR-006; `plan.md` Cycle 2 Member 2; Farochet C-06/C-07 UI specifications; existing authentication, catalogue, wishlist and Inquiry implementations.
+- **Acceptance criteria:** Authenticated Customer submit; authenticated identity supplies `customerId`; optional valid/unknown Product handling; message validation; owned history/detail retrieval; Raazia review preserved; no Customization/PendingOrderRequest/Order side effect.
+- **Important iterations/corrections:**
+  - Reused the existing Inquiry model, Repository, Inquiry Management component and admin review routes.
+  - Added customer submit/list/detail routes without introducing a second Repository or new Business Logic component.
+  - The frontend validation state was corrected so an empty inquiry produces the application's visible validation message instead of relying on native browser validation.
+  - Manual runtime diagnosis traced the generic 500 to the live `farochet_runtime` role having SELECT but no INSERT privilege on `Inquiry`; a rollback-safe DB probe and authenticated route reproduction confirmed PostgreSQL `42501`.
+  - Added a corrective INSERT grant/RLS-policy migration and moved local frontend, CORS and auth callback configuration to port 5174.
+- **Rejected/revised approach (if any):** No client-supplied identity, inquiry status vocabulary, chat timeline, automatic custom request, or confirmed order creation was introduced.
+- **Tests/checks actually run:** Targeted and full backend Vitest/Supertest suites; focused and full frontend Vitest suites; Vite production build; Prisma schema validation/status; live read-only runtime-role permission checks; rollback-only insert probe; authenticated API route reproduction; local port/health/CORS smoke tests.
+- **Actual results:** The initial pre-deployment probe found `farochet_runtime` lacked Inquiry INSERT and the POST failed with PostgreSQL `42501`; that historical failure was resolved after the two approved migrations were deployed by the authorized database operator. Final read-only Prisma status found 10 local migration directories and reported the database schema up to date. Read-only database checks verified `farochet_runtime` has Inquiry INSERT privilege and `runtime_inquiry_insert` exists; RLS and the existing SELECT policy were also present. Customer A submitted a synthetic general inquiry through the authenticated UI; PostgreSQL persistence, A's history and details were verified. Customer B submitted a separate synthetic catalogue-linked inquiry; B's history contained only B's own record, and direct access to A's inquiry was denied with 403. The authenticated Raazia Admin list and detail view displayed A's inquiry. The Admin UI shows the customer ID but reports the name/email as unavailable. No Order row was created. `Customization` and `PendingOrderRequest` tables are absent from the deployed database; the submission code path calls only Inquiry creation, so no such records were created by this endpoint. No migration was applied by the coding agent during final verification.
+- **Human decision:** Pending human acceptance.
+- **Decision reason:** Automated, database, customer workflow, ownership-isolation, and Admin visibility checks are recorded, but no formal human Accept / Revise / Reject decision was supplied.
+- **Major issue/change:** At the earlier integration verification, the Admin Inquiry projection displayed only the customer ID, so associated profile name/email were unavailable in that UI. The follow-up below resolves the projection using the existing Inquiry-to-User relation; no schema or privileged database access was added.
+- **Integration status:** Prior evidence records live inquiry submission, ownership checks, Admin list/detail access, and a read-only up-to-date migration status. This resumption did not rerun database checks or apply migrations. The current profile projection is covered by automated tests; an authenticated Admin browser session was not available for a live recheck. Changes are not committed or pushed, and formal human acceptance remains pending. Earlier evidence records the absence of Customization and PendingOrderRequest tables, so no live count for those record types is claimed.
+- **Evidence link(s):** `backend/tests/inquiries.test.js`; `frontend/src/features/inquiries/CustomerInquiryPage.test.jsx`; `backend/prisma/migrations/20261123024800_allow_runtime_inquiry_submission/migration.sql`; `docs/evidence/Testing_Evidence_Log.md`.
+
+#### Resumption follow-up — Admin identity and sidebar labels (23 November 2026)
+
+- Implemented the Admin inquiry list/detail projection of the linked User `displayName` and `email` when present. The customer UUID remains secondary information; missing fields use explicit unavailable labels. The existing Raazia-only routes and Customer ownership behavior remain unchanged.
+- Updated Admin navigation labels while retaining existing paths, keys/active state, and responsive layout. An isolated browser DOM/CSS preview matching the sidebar classes and labels showed readable white-on-plum labels, original paths, and the active Customer Inquiries state at desktop and at 390px mobile width with the menu open. The protected application route redirected to `/admin/sign-in` because no authenticated Raazia browser session was shared; the live Admin page and profile data were not rechecked.
+- Backend and frontend test suites and the production build were rerun; exact results are recorded in the testing evidence log. No database migration was run.
+
 ### Cycle 3 — Member 1 Pricing & Public Discount Management
 
 - **Related PRD requirements:** FR-02, FR-03; ADR-002 and ADR-005.
@@ -325,3 +357,40 @@ _Add new slice entries below._
 - **Human decision:** Pending Accept / Revise / Reject.
 - **Integration status:** Local working tree only; live database behavior and browser acceptance unverified.
 - **Evidence link(s):** `backend/tests/orders.test.js`; `frontend/src/features/orders/OrderManagementPage.jsx`; `docs/evidence/Testing_Evidence_Log.md`.
+### Cycle 2 — Member 2 final review and Admin/product follow-up (23 November 2026)
+
+- **Related PRD requirements:** FR-01, FR-02, FR-03, FR-05, FR-07, FR-16; ADR-004 and ADR-006.
+- **Owner:** Member 2.
+- **Plan version:** 2.5 (23 November 2026).
+- **Branch / Pull Request / merge:** `main`; prepared for a direct-to-main commit and push after checks; no feature branch or pull request.
+- **HITL / AFK mode:** HITL; the user authenticated in the shared Raazia browser session for live UI checks.
+- **Reason for mode:** Authenticated Admin identity and route access required the user's existing sign-in; database permissions remained human-governed.
+- **AI chat/task reference:** Current Copilot chat — Member 2 final review, dashboard repair, and push.
+- **Context supplied to agent:** PRD v1.4; architecture and accepted ADRs; `AGENTS.md`; `Guardrails.md`; existing code, tests, and UI Kit guidance.
+- **Acceptance criteria:** Inquiry list/detail display linked Customer name/email and UUID secondarily; drawer exposes all existing Admin routes at desktop/mobile widths; Product Management separates product-load and pricing-load failures and never renders a failed product request as an empty catalogue.
+- **Important iterations/corrections:** Replaced desktop persistent sidebar with an accessible shared drawer; added Escape/backdrop/close handling, focus trapping/restoration, route closure, and scroll lock. Product and public-pricing requests now load independently; unavailable pricing disables discount mutations and does not imply an inactive sale. The generated Prisma client initially lacked the PublicDiscount delegate and was regenerated. Restarted backend logs then confirmed the remaining live pricing failure is PostgreSQL `42501 permission denied for table PublicDiscount` (Prisma `P2039`): the existing table migration omits runtime grants. No migration or data change was performed.
+- **Rejected/revised approach (if any):** No auth bypass, database permission change, migration application, or fabricated pricing state was used. Customer-facing Admin footer link, environment-file edits, confirmed-order migration edits, backups, and scratch artifacts were excluded from the intended commit.
+- **Tests/checks actually run:** Backend `npm test`; frontend `npm test`; frontend `npm run build`; `npm run prisma:generate`; `git diff --check`; `git diff --cached --check`; live authenticated browser/API checks.
+- **Actual results:** Backend 113/113 and frontend 30/30 passed. Production build passed (110 modules) with the existing >500 kB advisory. Browser verified all four Admin links and active state at 1280px and 390px, Admin inquiry list/detail customer identity, and 2 product rows despite a pricing failure. `/api/pricing/public` remains HTTP 500 until a reviewed permission migration is applied by the authorized database steward. No migration was run.
+- **Human decision:** The user authorized commit and push. Formal product Accept / Revise / Reject remains pending.
+- **Decision reason:** Requested implementation and checks pass; the unrelated public-pricing grant remains a documented integration blocker rather than being silently altered.
+- **Major issue/change:** Public pricing still lacks `SELECT` for `farochet_runtime`. The mobile product table also creates document-level horizontal overflow; this is separate from the drawer and remains a follow-up limitation.
+- **Integration status:** No changes had been committed or pushed when this evidence entry was written; the existing local Wishlist commit remains ahead of `origin/main`.
+- **Evidence link(s):** `frontend/src/components/layout/AdminShell.test.jsx`; `frontend/src/features/catalogue/ProductManagementPage.test.jsx`; `backend/prisma/migrations/20261122180000_public_discount/migration.sql`; `docs/evidence/Testing_Evidence_Log.md`; `plan.md`.
+### Member 2 — Integrated resumption after origin/main fast-forward (23 November 2026)
+
+- **Related PRD requirements:** FR-01, FR-02, FR-03, FR-05, FR-07, FR-16; ADR-004 and ADR-006.
+- **Owner:** Member 2.
+- **Plan version:** 2.6 (23 November 2026).
+- **Branch / Pull Request / merge:** `main` fast-forwarded to `origin/main` at `bf9699e`; no new commit or push.
+- **HITL / AFK mode:** HITL; reused the user's authenticated Raazia browser session without bypassing authorization.
+- **AI chat/task reference:** Current Copilot chat — resume after origin/main fast-forward.
+- **Acceptance criteria:** Preserve the newly merged Customization Requests route in the shared Admin drawer; verify current route labels and active state; verify linked Customer identity in Admin Inquiry list/detail; keep product records visible when public pricing fails.
+- **Important iterations/corrections:** Resolved the overlapping Admin route and backend route-registration changes by preserving both the Customer Inquiry routes and the incoming Admin Customization routes. The shared drawer now includes five current routes. Preserved Member 3/4 evidence and code while reapplying Member 2 changes. No migration or database record was changed.
+- **Tests/checks actually run:** Backend `npm test -- --pool=threads --maxWorkers=1`; frontend `npm test`; frontend `npm run build`; `git diff --check`; `git diff --cached --check`; authenticated browser checks at 1280px and 390px; public pricing endpoint probe.
+- **Actual results:** Backend 127/127, frontend 30/30, and production build passed (111 modules; existing >500 kB advisory). The authenticated drawer showed all five routes with the active route at both widths. Admin Inquiry list/detail showed linked Customer name/email and UUID. Product Management showed two saved products with pricing unavailable. `/api/pricing/public` returned HTTP 500; prior backend logs identified PostgreSQL `42501 permission denied for table PublicDiscount`. The Customization Requests route loaded but its live data request returned HTTP 500; the page showed an error and zero pending requests. No migration was run.
+- **Human decision:** Formal Accept / Revise / Reject remains pending.
+- **Decision reason:** Combined automated checks passed; live pricing and Customization data remain blocked by existing database permissions/migration state.
+- **Major issue/change:** The repository still reports a rebase in progress with `REBASE_HEAD` pointing to the existing Wishlist commit, although that commit is already in remote history. `git rebase --quit` could not remove `.git/rebase-merge` because of its deny-delete ACL. No rebase continuation, commit, push, ACL change, or destructive Git action was performed. The re-applied Member 2 work remains staged, and the original work remains in `stash@{0}`.
+- **Integration status:** No Member 2 commit or push; must clear the stale Git operation metadata before committing safely.
+- **Evidence link(s):** `frontend/src/components/layout/AdminShell.test.jsx`; `frontend/src/components/layout/AdminSidebar.test.jsx`; `frontend/src/features/catalogue/ProductManagementPage.test.jsx`; `frontend/src/features/inquiries/InquiryManagementPage.test.jsx`; `docs/evidence/Testing_Evidence_Log.md`.

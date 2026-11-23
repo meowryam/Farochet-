@@ -27,8 +27,6 @@ const EMPTY_FORM = {
   basePrice: "",
 };
 
-const PRODUCT_NAV_ITEMS = [{ label: "Products", href: "/admin/products", key: "products" }];
-
 function imageSource(reference) {
   if (reference.startsWith("/") && !reference.startsWith("//")) return reference;
   try {
@@ -60,42 +58,61 @@ function ProductImage({ source }) {
 export default function ProductManagementPage() {
   const { signOut } = useAuth();
   const navigate = useNavigate();
-  const [products, setProducts] = useState([]);
+  const [products, setProducts] = useState(null);
   const [form, setForm] = useState(EMPTY_FORM);
   const [editingId, setEditingId] = useState(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isProductsLoading, setIsProductsLoading] = useState(true);
+  const [isPricingLoading, setIsPricingLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState("");
+  const [productsError, setProductsError] = useState("");
+  const [pricingError, setPricingError] = useState("");
   const [notice, setNotice] = useState("");
-  const [publicPricing, setPublicPricing] = useState({
-    active: false,
-    fixedDiscountAmount: null,
-    products: [],
-  });
+  const [publicPricing, setPublicPricing] = useState(null);
   const [discountAmount, setDiscountAmount] = useState("");
   const [isDiscountSaving, setIsDiscountSaving] = useState(false);
 
   const loadProducts = useCallback(async () => {
-    setIsLoading(true);
+    setProducts(null);
+    setPublicPricing(null);
+    setDiscountAmount("");
     setError("");
-    try {
-      const [loadedProducts, loadedPricing] = await Promise.all([
-        listAdminProducts(),
-        getPublicPricing(),
-      ]);
-      setProducts(loadedProducts);
-      setPublicPricing(loadedPricing);
-      setDiscountAmount(
-        loadedPricing.fixedDiscountAmount == null
-          ? ""
-          : String(loadedPricing.fixedDiscountAmount),
-      );
-    } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : "Could not load products.");
-    } finally {
-      setIsLoading(false);
-    }
+    setProductsError("");
+    setPricingError("");
+    setIsProductsLoading(true);
+    setIsPricingLoading(true);
+
+    const productsRequest = Promise.resolve()
+      .then(() => listAdminProducts())
+      .then((loadedProducts) => {
+        setProducts(loadedProducts);
+      })
+      .catch((loadError) => {
+        setProductsError(loadError instanceof Error ? loadError.message : "Could not load products.");
+      })
+      .finally(() => {
+        setIsProductsLoading(false);
+      });
+
+    const pricingRequest = Promise.resolve()
+      .then(() => getPublicPricing())
+      .then((loadedPricing) => {
+        setPublicPricing(loadedPricing);
+        setDiscountAmount(
+          loadedPricing.fixedDiscountAmount == null
+            ? ""
+            : String(loadedPricing.fixedDiscountAmount),
+        );
+      })
+      .catch((loadError) => {
+        setPricingError(loadError instanceof Error ? loadError.message : "Could not load public pricing.");
+      })
+      .finally(() => {
+        setIsPricingLoading(false);
+      });
+
+    await Promise.all([productsRequest, pricingRequest]);
   }, []);
 
   useEffect(() => {
@@ -188,6 +205,11 @@ export default function ProductManagementPage() {
 
   async function savePublicDiscount(event) {
     event.preventDefault();
+    if (!publicPricing || isPricingLoading) {
+      setPricingError("Current public pricing must load before sale settings can be changed.");
+      return;
+    }
+
     setIsDiscountSaving(true);
     setError("");
     setNotice("");
@@ -216,6 +238,11 @@ export default function ProductManagementPage() {
   }
 
   async function endPublicSale() {
+    if (!publicPricing || isPricingLoading) {
+      setPricingError("Current public pricing must load before sale settings can be changed.");
+      return;
+    }
+
     setIsDiscountSaving(true);
     setError("");
     setNotice("");
@@ -237,7 +264,7 @@ export default function ProductManagementPage() {
   }
 
   return (
-    <AdminShell activeKey="products" navItems={PRODUCT_NAV_ITEMS} logoutHref={null}>
+    <AdminShell activeKey="products" logoutHref={null}>
       <PageHeader
         eyebrow="Farochet Admin"
         title="Product Management"
@@ -255,6 +282,8 @@ export default function ProductManagementPage() {
       />
 
       {error && <Alert tone="error" title="Action could not be completed">{error}</Alert>}
+      {productsError && <Alert tone="error" title="Products could not be loaded">{productsError}</Alert>}
+      {pricingError && <Alert tone="error" title="Public pricing is unavailable">{pricingError}</Alert>}
       {notice && <Alert tone="success">{notice}</Alert>}
 
       <div className="catalogue-admin-layout">
@@ -266,8 +295,16 @@ export default function ProductManagementPage() {
               <div className="catalogue-info-fields">
                 <div className="faro-field">
                   <label className="faro-field__label">Sale status</label>
-                  <strong>{publicPricing.active ? "Active" : "Inactive"}</strong>
-                  {publicPricing.active && (
+                  <strong>
+                    {isPricingLoading
+                      ? "Loading…"
+                      : pricingError
+                        ? "Unavailable"
+                        : publicPricing?.active
+                          ? "Active"
+                          : "Inactive"}
+                  </strong>
+                  {publicPricing?.active && (
                     <span className="faro-field__help">
                       Fixed discount: {formatPrice(publicPricing.fixedDiscountAmount)}
                     </span>
@@ -285,6 +322,7 @@ export default function ProductManagementPage() {
                     step="1"
                     value={discountAmount}
                     onChange={(event) => setDiscountAmount(event.target.value)}
+                    disabled={!publicPricing || isPricingLoading}
                     required
                   />
                   <span className="faro-field__help">
@@ -293,19 +331,24 @@ export default function ProductManagementPage() {
                 </div>
               </div>
               <div className="catalogue-form-actions">
-                {publicPricing.active && (
+                {publicPricing?.active && (
                   <Button
                     variant="outline"
                     admin
                     type="button"
                     onClick={endPublicSale}
-                    disabled={isDiscountSaving}
+                    disabled={isDiscountSaving || isPricingLoading}
                   >
                     End sale
                   </Button>
                 )}
-                <Button type="submit" admin loading={isDiscountSaving}>
-                  {publicPricing.active ? "Update discount" : "Activate sale"}
+                <Button
+                  type="submit"
+                  admin
+                  loading={isDiscountSaving}
+                  disabled={!publicPricing || isPricingLoading}
+                >
+                  {publicPricing?.active ? "Update discount" : "Activate sale"}
                 </Button>
               </div>
             </Card>
@@ -390,15 +433,29 @@ export default function ProductManagementPage() {
 
           <Card
             title="Catalogue products"
-            description={isLoading ? "Loading saved products…" : `${products.length} saved product${products.length === 1 ? "" : "s"}`}
+            description={
+              isProductsLoading
+                ? "Loading saved products…"
+                : productsError
+                  ? "Product information is unavailable."
+                  : `${products.length} saved product${products.length === 1 ? "" : "s"}`
+            }
             action={
-              <Button variant="outline" size="sm" admin onClick={loadProducts} loading={isLoading}>
+              <Button
+                variant="outline"
+                size="sm"
+                admin
+                onClick={loadProducts}
+                loading={isProductsLoading || isPricingLoading}
+              >
                 Refresh
               </Button>
             }
           >
-            {isLoading ? (
+            {isProductsLoading ? (
               <p className="catalogue-state" role="status">Loading products…</p>
+            ) : productsError ? (
+              <p className="catalogue-state" role="status">Products could not be loaded. Refresh to try again.</p>
             ) : products.length === 0 ? (
               <EmptyState
                 title="No products yet"
@@ -425,7 +482,7 @@ export default function ProductManagementPage() {
                   <tbody>
                     {products.map((product) => {
                       const source = product.images.map(imageSource).find(Boolean);
-                      const pricedProduct = publicPricing.products.find((item) => item.id === product.id);
+                      const pricedProduct = publicPricing?.products.find((item) => item.id === product.id);
                       return (
                         <tr key={product.id}>
                           <td>
@@ -440,7 +497,11 @@ export default function ProductManagementPage() {
                           <td>{product.category || "Not provided"}</td>
                           <td>{formatPrice(product.basePrice)}</td>
                           <td>
-                            {formatPrice(pricedProduct?.effectivePublicPrice ?? product.basePrice)}
+                            {publicPricing
+                              ? formatPrice(pricedProduct?.effectivePublicPrice ?? product.basePrice)
+                              : isPricingLoading
+                                ? "Loading…"
+                                : "Unavailable"}
                           </td>
                           <td>
                             <span className={`catalogue-record-badge ${product.isArchived ? "is-archived" : ""}`}>

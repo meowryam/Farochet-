@@ -40,9 +40,10 @@ export default function CustomerAccountPage() {
             <div><dt>Display name</dt><dd>{user?.displayName || "Not provided"}</dd></div>
             <div><dt>Email address</dt><dd>{user?.email || "Not available"}</dd></div>
           </dl>
-          <Alert tone="info">
-            Customer inquiry history and wishlist management are not connected to customer-facing backend APIs yet.
-          </Alert>
+          <div className="account-actions">
+            <Button variant="outline" onClick={() => navigate("/inquiries")}>My Inquiries</Button>
+            <Button variant="outline" onClick={() => navigate("/wishlist")}>My Wishlist</Button>
+          </div>
         </Card>
       </ContentContainer>
     </CustomerShell>

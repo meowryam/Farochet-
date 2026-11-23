@@ -1,9 +1,9 @@
 # Raazia — Deliverable 4 Implementation Plan
 
-**Plan version:** 2.0
-**Last updated:** 22 November 2026
-**Status:** Bootstrap scaffold, Member 2 Cycle 1 Authentication & Role Access, Member 4 confirmed-order code slice, public Customer Product Catalogue Browsing, and Member 2 Cycle 4 Wishlist Management are implemented locally. The Customer Wishlist migration has been applied to the shared Supabase development database; Prisma reported all eight migrations up to date. The user reports successful browser testing of Wishlist functionality; that manual result is distinct from the automated test results recorded in the evidence log. Full backend and frontend suites, production build, and Prisma schema validation pass. Formal project acceptance, public discount configuration, other pending live Supabase operations, live Customer confirmation-email/registration, sign-out verification, production deployment, installed Node 26 sign-off, and second-machine clean-clone verification also remain.
-**Previous plan version:** 1.3 is preserved at Git commit `cf3bbed`.
+**Plan version:** 2.6
+**Last updated:** 23 November 2026
+**Status:** The Bootstrap scaffold, Member 2 Cycle 1 Authentication & Role Access, Member 4 confirmed-order code slice, public Customer Product Catalogue Browsing, Member 2 Cycle 4 Wishlist Management, and Member 2 Cycle 2 Customer Inquiry Submission are implemented locally. After integrating the latest `origin/main`, the authenticated Admin drawer exposes all five current sections; its labels, routes, active state, and visibility were verified at desktop and 390px mobile widths. The Admin Inquiry list and detail show the linked customer's name and email with UUID secondary. Product Management keeps two saved records visible while showing public pricing as unavailable. `GET /api/pricing/public` still returns HTTP 500/P2039; backend logs identify PostgreSQL `42501 permission denied for table PublicDiscount`. The Customization Requests page is reachable but its live request load returns HTTP 500 and displays an error alongside zero pending requests; database integration remains unverified. No migration or database record was changed. The combined backend suite passed 127/127, frontend suite 30/30, and production build passed (111 modules; existing chunk-size advisory). Formal human acceptance remains pending; the intended Member 2 commit and push are not yet complete.
+**Previous plan version:** 2.5 is preserved at `docs/plan-history/plan-v16.md`.
 **Target submission/demo date:** 27 November 2026  
 **Owners:** Members 1–4 share project ownership equally; each owns their assigned vertical slice. There is no separately designated project coordinator.
 
@@ -267,11 +267,13 @@ Cycle dependencies and integration checks are in Sections 9–13.
 **Requirement:** FR-05; supports FR-06 and FR-08.
 
 **Acceptance criteria:**
-- [ ] Authenticated Customer can submit an inquiry about product details, price, availability or customization.
-- [ ] Customer identity is derived from the authenticated request; a client-supplied `customerId` is ignored/rejected.
-- [ ] Product reference is optional where the inquiry is not about a specific catalogue product.
-- [ ] Submitted Inquiry is persisted and remains available after restart.
-- [ ] The submission does not directly create a Customization, PendingOrderRequest or Order unless the customer separately completes that workflow.
+- [x] Authenticated Customer can submit an inquiry about product details, price, availability or customization.
+- [x] Customer identity is derived from the authenticated request; a client-supplied `customerId` is ignored/rejected.
+- [x] Product reference is optional where the inquiry is not about a specific catalogue product.
+- [x] Submitted Inquiry is persisted and remains available after restart. *(Verified in PostgreSQL after the user-reported deployment; no migration was applied during final verification.)*
+- [x] Customer can view their own inquiry history and details; another Customer is denied access to that inquiry. *(Verified in the authenticated UI and protected API.)*
+- [x] Raazia can list and inspect the submitted inquiry in Farochet Admin. *(Prior live evidence verified list/detail access. The current projection and UI include the linked profile name/email when available and keep the UUID secondary; automated backend/frontend tests cover both available and missing profile fields. A new authenticated Admin browser session was not available during this resumption.)*
+- [x] The submission does not directly create a Customization, PendingOrderRequest or Order. *(The endpoint writes only Inquiry and no Order row was created. The deployed database lacks Customization and PendingOrderRequest tables, so their live row counts are unavailable.)*
 
 **Checks:** empty message; optional/valid/unknown Product reference; unauthenticated request; spoofed customer ID; successful retrieval by Raazia.
 
@@ -623,3 +625,12 @@ Group Contribution Log records each member's slice implementation, AI interactio
 | v1.9 (active) | 22 Nov 2026 | Records Wishlist API/UI, schema/migration, automated tests and build results; the unapplied migration, live persistence/RLS verification and human acceptance remain outstanding. |
 | `plan-v10.md` (v1.9) | 22 Nov 2026 | Preserves the active v1.9 plan before recording applied Wishlist migration status and user-reported browser testing. |
 | v2.0 (active) | 22 Nov 2026 | Records that the Wishlist migration is applied, Prisma reports no pending migrations, and the user reports successful browser testing; automated test results are recorded separately. |
+| v2.1 (active) | 23 Nov 2026 | Records Member 2's Cycle 2 Inquiry implementation and the pre-deployment runtime INSERT permission blocker. |
+| `plan-v12.md` (v2.1) | 23 Nov 2026 | Preserves active v2.1 before updating the Inquiry migration and live verification status. |
+| v2.2 (active) | 23 Nov 2026 | Records the pending Inquiry permission migration, empty-directory blocker, and pre-deployment test results. |
+| `plan-v13.md` (v2.2) | 23 Nov 2026 | Preserves active v2.2 before recording final Inquiry deployment and functional verification. |
+| v2.3 (active) | 23 Nov 2026 | Records the deployed migration state and live Customer A/B/Admin verification; documents the Admin customer-context limitation and pending formal human acceptance. |
+| `plan-v14.md` (v2.3) | 23 Nov 2026 | Preserves the active v2.3 plan before correcting the Admin customer-context status and recording resumed verification. |
+| v2.4 (active) | 23 Nov 2026 | Records the existing User-profile projection, automated verification, browser authentication limitation, and current suite/build results; inquiry remains Cycle 2 and human acceptance remains pending. |
+| `plan-v16.md` (v2.5) | 23 Nov 2026 | Preserves the active v2.5 plan before integrating the latest Member 3/4 Cycle 3 changes and verifying the combined Member 2 work. |
+| v2.6 (active) | 23 Nov 2026 | Records the five-route Admin drawer after remote integration, authenticated Admin Inquiry identity, independent Product Management pricing failure state, combined test/build results, and remaining live API/database blockers. |

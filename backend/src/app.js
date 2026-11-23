@@ -17,7 +17,7 @@ import {
 import healthRoutes from "./presentation/routes/health.routes.js";
 import { createAuthRoutes } from "./presentation/routes/auth.routes.js";
 import { createProductRoutes, createPublicProductRoutes } from "./presentation/routes/product.routes.js";
-import { createInquiryRoutes } from "./presentation/routes/inquiry.routes.js";
+import { createCustomerInquiryRoutes, createInquiryRoutes } from "./presentation/routes/inquiry.routes.js";
 import {
   createCustomizationRoutes,
   createAdminCustomizationRoutes,
@@ -99,9 +99,7 @@ export function createApp({
   });
 
  const allowedOrigins = new Set([
-  "http://localhost:5173",
   "http://localhost:5174",
-  "http://localhost:5175",
 ]);
   if (process.env.FRONTEND_URL) {
     allowedOrigins.add(process.env.FRONTEND_URL);
@@ -143,6 +141,13 @@ export function createApp({
   app.use(
     "/api/admin/inquiries",
     createInquiryRoutes({ inquiryManagement: inquiries, authenticate }),
+  );
+  app.use(
+    "/api/customer/inquiries",
+    createCustomerInquiryRoutes({
+      inquiryManagement: inquiries,
+      authenticate: authenticateCustomer,
+    }),
   );
   app.use("/api/admin/orders", orderRoutes.adminRouter);
   app.use("/api/admin/availability", availabilityRoutes.adminRouter);

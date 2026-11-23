@@ -88,7 +88,7 @@ Copy-Item .env.example .env    # macOS/Linux: cp .env.example .env
 npm run dev
 ```
 
-- Frontend: http://localhost:5173
+- Frontend: http://localhost:5174
 - Backend health check: http://localhost:5000/api/health
 - The frontend uses `VITE_API_BASE_URL` for Express requests (default `http://localhost:5000/api`).
 - For Supabase Auth, set `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` in `frontend/.env`; set the matching `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY` in `backend/.env`. These are public project configuration values, not proof of identity. Never put a Supabase secret/service-role key in the frontend.
@@ -101,7 +101,7 @@ Protected API requests send a Supabase access token to Express. Middleware verif
 
 ### Product Catalogue Administration (Cycle 1 — Member 1)
 
-The admin sign-in screen is available at `http://localhost:5173/admin/sign-in`; protected Product and Inquiry pages require a persisted `RAAZIA` profile. Until the User migration is applied and an authorized profile is provisioned, sign-in cannot grant application access. No public admin registration is provided.
+The admin sign-in screen is available at `http://localhost:5174/admin/sign-in`; protected Product and Inquiry pages require a persisted `RAAZIA` profile. Until the User migration is applied and an authorized profile is provisioned, sign-in cannot grant application access. No public admin registration is provided.
 
 The Product model stores `basePrice` as the Standard Catalogue Price in whole PKR rupees. Public discounts are not stored on Product; discount behavior remains separate and follows the fixed shared-discount rule. Product removal archives the row (`isArchived`) rather than deleting it. Product image entries are existing references only; this slice does not upload images or choose a storage provider. No product-availability state is introduced.
 

@@ -62,7 +62,10 @@ async function upsertPublicDiscount(data) {
 
 async function listInquiries() {
   return getPrismaClient().inquiry.findMany({
-    include: { product: { select: { name: true } } },
+    include: {
+      product: { select: { name: true } },
+      customer: { select: { displayName: true, email: true } },
+    },
     orderBy: [{ createdAt: "desc" }, { id: "asc" }],
   });
 }
@@ -71,6 +74,31 @@ async function findInquiryById(id) {
   return getPrismaClient().inquiry.findUnique({
     where: { id },
     include: { product: { select: { name: true } } },
+  });
+}
+
+async function findAdminInquiryById(id) {
+  return getPrismaClient().inquiry.findUnique({
+    where: { id },
+    include: {
+      product: { select: { name: true } },
+      customer: { select: { displayName: true, email: true } },
+    },
+  });
+}
+
+async function createInquiry(data) {
+  return getPrismaClient().inquiry.create({
+    data,
+    include: { product: { select: { name: true } } },
+  });
+}
+
+async function listInquiriesByCustomer(customerId) {
+  return getPrismaClient().inquiry.findMany({
+    where: { customerId },
+    include: { product: { select: { name: true } } },
+    orderBy: [{ createdAt: "desc" }, { id: "asc" }],
   });
 }
 
@@ -671,6 +699,9 @@ const repository = {
   upsertPublicDiscount,
   listInquiries,
   findInquiryById,
+  findAdminInquiryById,
+  createInquiry,
+  listInquiriesByCustomer,
   upsertInquiry,
   createCustomizationRequest,
   listPendingCustomizationRequests,

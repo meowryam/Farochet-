@@ -44,7 +44,7 @@ export default function CustomerCataloguePage() {
         { label: "Catalogue", href: "/catalogue" },
         { label: "My Orders", href: "/orders" },
       ], currentPath: "/catalogue", accountHref: "/customer", wishlistHref: "/wishlist" }}
-      footerProps={{ catalogueHref: "/catalogue", customRequestHref: "/availability", inquiryHref: "/availability", wishlistHref: "/wishlist" }}
+      footerProps={{ catalogueHref: "/catalogue", customRequestHref: "/availability", inquiryHref: "/inquiries", wishlistHref: "/wishlist" }}
     >
       <ContentContainer className="catalogue-public-page">
         <header className="catalogue-public-heading">
@@ -99,6 +99,10 @@ export default function CustomerCataloguePage() {
                   <ProductCard
                     key={product.id}
                     product={product}
+                    inquiryAction={isCustomerSession ? {
+                      label: "Submit Inquiry",
+                      href: `/inquiries?productId=${encodeURIComponent(product.id)}`,
+                    } : null}
                     wishlistAction={isCustomerSession ? {
                       label: saved ? "Remove from Wishlist" : "Add to Wishlist",
                       saved,

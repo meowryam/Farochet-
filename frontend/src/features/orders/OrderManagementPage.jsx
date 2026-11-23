@@ -16,12 +16,6 @@ import {
   updateAdminPaymentStatus,
 } from "../../services/api";
 
-const ORDER_NAV_ITEMS = [
-  { label: "Products", href: "/admin/products", key: "products" },
-  { label: "Inquiries", href: "/admin/inquiries", key: "inquiries" },
-  { label: "Orders", href: "/admin/orders", key: "orders" },
-];
-
 function formatDate(value) {
   if (!value) return "Not yet provided";
   return new Date(value).toLocaleString("en-PK", {
@@ -136,7 +130,7 @@ export default function OrderManagementPage() {
   }
 
   return (
-    <AdminShell activeKey="orders" navItems={ORDER_NAV_ITEMS} logoutHref={null}>
+    <AdminShell activeKey="orders" logoutHref={null}>
       <PageHeader
         eyebrow="Farochet Admin"
         title="Confirmed Orders"

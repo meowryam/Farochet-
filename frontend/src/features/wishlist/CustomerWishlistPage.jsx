@@ -31,7 +31,7 @@ export default function CustomerWishlistPage() {
       footerProps={{
         catalogueHref: "/catalogue",
         customRequestHref: "/availability",
-        inquiryHref: "/availability",
+        inquiryHref: "/inquiries",
         wishlistHref: "/wishlist",
       }}
     >

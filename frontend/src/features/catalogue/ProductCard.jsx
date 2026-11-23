@@ -17,7 +17,7 @@ function formatPrice(amount) {
   return `PKR ${new Intl.NumberFormat("en-PK").format(amount)}`;
 }
 
-export default function ProductCard({ product, wishlistAction }) {
+export default function ProductCard({ product, wishlistAction, inquiryAction }) {
   const [imageFailed, setImageFailed] = useState(false);
   const source = product.images?.map(imageSource).find(Boolean);
 
@@ -59,6 +59,11 @@ export default function ProductCard({ product, wishlistAction }) {
           <span>Standard Catalogue Price</span>
           <strong>{formatPrice(product.basePrice)}</strong>
         </div>
+        {inquiryAction && (
+          <a className="faro-button faro-button--outline faro-button--sm" href={inquiryAction.href}>
+            {inquiryAction.label}
+          </a>
+        )}
       </div>
     </article>
   );

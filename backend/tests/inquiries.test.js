@@ -19,12 +19,34 @@ function createMemoryRepository() {
     async listInquiries() {
       return [...inquiries]
         .sort((left, right) => right.createdAt - left.createdAt)
-        .map((inquiry) => withProduct(inquiry));
+        .map((inquiry) => withAdminRelations(inquiry));
     },
 
     async findInquiryById(id) {
       const inquiry = inquiries.find((item) => item.id === id);
       return inquiry ? withProduct(inquiry) : null;
+    },
+
+    async findAdminInquiryById(id) {
+      const inquiry = inquiries.find((item) => item.id === id);
+      return inquiry ? withAdminRelations(inquiry) : null;
+    },
+
+    async createInquiry(data) {
+      const inquiry = {
+        id: randomUUID(),
+        ...data,
+        createdAt: new Date(),
+      };
+      inquiries.push(inquiry);
+      return withProduct(inquiry);
+    },
+
+    async listInquiriesByCustomer(customerId) {
+      return inquiries
+        .filter((inquiry) => inquiry.customerId === customerId)
+        .sort((left, right) => right.createdAt - left.createdAt)
+        .map((inquiry) => withProduct(inquiry));
     },
   };
 
@@ -33,6 +55,10 @@ function createMemoryRepository() {
       ? products.find((item) => item.id === inquiry.productId) ?? null
       : null;
     return { ...inquiry, product: product ? { name: product.name } : null };
+  }
+
+  function withAdminRelations(inquiry) {
+    return { ...withProduct(inquiry), customer: inquiry.customer ?? null };
   }
 }
 
@@ -111,6 +137,44 @@ describe("Inquiry Review & Management API", () => {
       .expect(({ body }) => expect(body.inquiry.productName).toBeNull());
   });
 
+  it("returns available customer identity in Admin list and detail responses", async () => {
+    const inquiry = await seedInquiry(dataRepository, {
+      customer: { displayName: "Amina Example", email: "amina@example.test" },
+    });
+
+    const list = await request(app).get("/api/admin/inquiries").expect(200);
+    expect(list.body.inquiries[0]).toMatchObject({
+      customerId: inquiry.customerId,
+      customerName: "Amina Example",
+      customerEmail: "amina@example.test",
+    });
+
+    const detail = await request(app)
+      .get(`/api/admin/inquiries/${inquiry.id}`)
+      .expect(200);
+    expect(detail.body.inquiry).toMatchObject({
+      customerId: inquiry.customerId,
+      customerName: "Amina Example",
+      customerEmail: "amina@example.test",
+    });
+  });
+
+  it("returns null customer identity fields when the profile is missing or incomplete", async () => {
+    const inquiry = await seedInquiry(dataRepository, {
+      customer: { displayName: " ", email: null },
+    });
+
+    const response = await request(app)
+      .get(`/api/admin/inquiries/${inquiry.id}`)
+      .expect(200);
+
+    expect(response.body.inquiry).toMatchObject({
+      customerId: inquiry.customerId,
+      customerName: null,
+      customerEmail: null,
+    });
+  });
+
   it("rejects malformed inquiry identifiers", async () => {
     await request(app).get("/api/admin/inquiries/not-a-uuid").expect(400);
   });
@@ -143,7 +207,10 @@ describe("Inquiry Management ownership", () => {
     const customerA = randomUUID();
     const customerB = randomUUID();
     const ownedByA = await seedInquiry(dataRepository, { customerId: customerA });
-    const ownedByB = await seedInquiry(dataRepository, { customerId: customerB });
+    const ownedByB = await seedInquiry(dataRepository, {
+      customerId: customerB,
+      customer: { displayName: "Customer B", email: "customer-b@example.test" },
+    });
     const inquiryManagement = createInquiryManagement({ repository: dataRepository });
 
     await expect(
@@ -156,6 +223,128 @@ describe("Inquiry Management ownership", () => {
 
     await expect(
       inquiryManagement.getInquiryForViewer({ id: "raazia-test-user", role: "RAAZIA" }, ownedByB.id),
-    ).resolves.toMatchObject({ id: ownedByB.id, customerId: customerB });
+    ).resolves.toMatchObject({
+      id: ownedByB.id,
+      customerId: customerB,
+      customerName: "Customer B",
+      customerEmail: "customer-b@example.test",
+    });
+  });
+});
+
+describe("Customer inquiry submission", () => {
+  let dataRepository;
+  let customerApp;
+  const customerId = randomUUID();
+
+  beforeEach(() => {
+    dataRepository = createMemoryRepository();
+    customerApp = createApp({
+      dataRepository,
+      authenticateCustomer: customerSession(customerId),
+    });
+  });
+
+  it("allows an authenticated customer to submit a general inquiry", async () => {
+    const response = await request(customerApp)
+      .post("/api/customer/inquiries")
+      .send({ message: "  Do you make custom flower bouquets?  " })
+      .expect(201);
+
+    expect(response.body.inquiry).toMatchObject({
+      customerId,
+      message: "Do you make custom flower bouquets?",
+      productName: null,
+    });
+  });
+
+  it("allows an optional valid product reference", async () => {
+    const product = await seedProduct(dataRepository, "Crochet rose");
+    const response = await request(customerApp)
+      .post("/api/customer/inquiries")
+      .send({ productId: product.id, message: "Is this available in pink?" })
+      .expect(201);
+
+    expect(response.body.inquiry).toMatchObject({
+      customerId,
+      productName: "Crochet rose",
+      message: "Is this available in pink?",
+    });
+  });
+
+  it("rejects an empty message and client-supplied customer identity", async () => {
+    await request(customerApp)
+      .post("/api/customer/inquiries")
+      .send({ message: "   " })
+      .expect(400);
+
+    await request(customerApp)
+      .post("/api/customer/inquiries")
+      .send({ customerId: randomUUID(), message: "Please help" })
+      .expect(400);
+  });
+
+  it("rejects inquiry messages longer than 5,000 characters", async () => {
+    const response = await request(customerApp)
+      .post("/api/customer/inquiries")
+      .send({ message: "x".repeat(5001) })
+      .expect(400);
+
+    expect(response.body.error).toMatchObject({
+      code: "VALIDATION_ERROR",
+      message: "Inquiry message must be 5,000 characters or fewer.",
+    });
+    expect(dataRepository.inquiries).toHaveLength(0);
+  });
+
+  it("rejects unknown product references", async () => {
+    await request(customerApp)
+      .post("/api/customer/inquiries")
+      .send({ productId: randomUUID(), message: "Is this available?" })
+      .expect(404)
+      .expect(({ body }) => expect(body.error.code).toBe("PRODUCT_NOT_FOUND"));
+  });
+
+  it("rejects archived product references", async () => {
+    const product = await seedProduct(dataRepository, "Archived flower");
+    product.isArchived = true;
+
+    await request(customerApp)
+      .post("/api/customer/inquiries")
+      .send({ productId: product.id, message: "Is this available?" })
+      .expect(404)
+      .expect(({ body }) => expect(body.error.code).toBe("PRODUCT_NOT_FOUND"));
+  });
+
+  it("requires authentication and returns only the current customer's history", async () => {
+    await seedInquiry(dataRepository, {
+      customerId,
+      customer: { displayName: "Private Customer", email: "private@example.test" },
+    });
+    await seedInquiry(dataRepository, { customerId: randomUUID() });
+
+    await request(createApp({ dataRepository }))
+      .post("/api/customer/inquiries")
+      .send({ message: "Please help" })
+      .expect(401);
+
+    const history = await request(customerApp)
+      .get("/api/customer/inquiries")
+      .expect(200);
+    expect(history.body.inquiries).toHaveLength(1);
+    expect(history.body.inquiries[0].customerId).toBe(customerId);
+    expect(history.body.inquiries[0]).not.toHaveProperty("customerName");
+    expect(history.body.inquiries[0]).not.toHaveProperty("customerEmail");
+
+    const foreign = await seedInquiry(dataRepository, { customerId: randomUUID() });
+    await request(customerApp)
+      .get(`/api/customer/inquiries/${foreign.id}`)
+      .expect(403);
+
+    const ownedDetail = await request(customerApp)
+      .get(`/api/customer/inquiries/${dataRepository.inquiries[0].id}`)
+      .expect(200);
+    expect(ownedDetail.body.inquiry).not.toHaveProperty("customerName");
+    expect(ownedDetail.body.inquiry).not.toHaveProperty("customerEmail");
   });
 });

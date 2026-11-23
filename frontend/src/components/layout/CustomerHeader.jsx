@@ -3,6 +3,8 @@ import FarochetLogo from "../brand/FarochetLogo";
 import HeartIcon from "../ui/HeartIcon";
 
 const DEFAULT_LINKS = [
+  { label: "Catalogue", href: "/catalogue" },
+  { label: "My Inquiries", href: "/inquiries" },
   { label: "My Orders", href: "/orders" },
   { label: "Availability", href: "/availability" },
 ];

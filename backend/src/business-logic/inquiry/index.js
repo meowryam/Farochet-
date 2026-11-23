@@ -17,19 +17,66 @@ function toReviewInquiry(inquiry) {
   };
 }
 
+function toAdminInquiry(inquiry) {
+  const displayName = inquiry.customer?.displayName;
+  const email = inquiry.customer?.email;
+
+  return {
+    ...toReviewInquiry(inquiry),
+    customerName: typeof displayName === "string" && displayName.trim() ? displayName.trim() : null,
+    customerEmail: typeof email === "string" && email.trim() ? email.trim() : null,
+  };
+}
+
 function createInquiryManagement({ repository }) {
   if (!repository) {
     throw new Error("Inquiry Management requires the centralized Repository.");
   }
 
   return {
-    submitInquiry: async () => {
-      throw new Error("Inquiry Management is not implemented yet.");
+    submitInquiry: async (viewer, data) => {
+      if (!viewer) {
+        throw inquiryError("Authentication is required.", 401, "AUTHENTICATION_REQUIRED");
+      }
+      if (viewer.role !== "CUSTOMER") {
+        throw inquiryError("Only customers can submit inquiries.", 403, "FORBIDDEN");
+      }
+      if (!data?.message || typeof data.message !== "string" || data.message.trim().length === 0) {
+        throw inquiryError("Inquiry message is required.", 400, "VALIDATION_ERROR");
+      }
+
+      if (data.productId) {
+        const product = await repository.findProductById(data.productId);
+        if (!product) {
+          throw inquiryError("The selected product was not found.", 404, "PRODUCT_NOT_FOUND");
+        }
+        if (product.isArchived) {
+          throw inquiryError("The selected product is not available for inquiries.", 404, "PRODUCT_NOT_FOUND");
+        }
+      }
+
+      const inquiry = await repository.createInquiry({
+        customerId: viewer.id,
+        productId: data.productId ?? null,
+        message: data.message.trim(),
+      });
+      return toReviewInquiry(inquiry);
+    },
+
+    listMyInquiries: async (viewer) => {
+      if (!viewer) {
+        throw inquiryError("Authentication is required.", 401, "AUTHENTICATION_REQUIRED");
+      }
+      if (viewer.role !== "CUSTOMER") {
+        throw inquiryError("This operation is not permitted for this account.", 403, "FORBIDDEN");
+      }
+      const inquiries = await repository.listInquiriesByCustomer(viewer.id);
+      return inquiries.map(toReviewInquiry);
     },
 
     listInquiries: async () => {
       const inquiries = await repository.listInquiries();
-      return inquiries.map(toReviewInquiry);
+      return inquiries.map(toAdminInquiry);
     },
 
     getInquiryForViewer: async (viewer, id) => {
@@ -41,7 +88,9 @@ function createInquiryManagement({ repository }) {
         throw inquiryError("This inquiry is not available to this account.", 403, "INQUIRY_ACCESS_DENIED");
       }
 
-      const inquiry = await repository.findInquiryById(id);
+      const inquiry = viewer.role === "RAAZIA"
+        ? await repository.findAdminInquiryById(id)
+        : await repository.findInquiryById(id);
 
       if (!inquiry) {
         if (viewer.role === "CUSTOMER") {
@@ -54,7 +103,9 @@ function createInquiryManagement({ repository }) {
         throw inquiryError("This inquiry is not available to this account.", 403, "INQUIRY_ACCESS_DENIED");
       }
 
-      return toReviewInquiry(inquiry);
+      return viewer.role === "RAAZIA"
+        ? toAdminInquiry(inquiry)
+        : toReviewInquiry(inquiry);
     },
   };
 }

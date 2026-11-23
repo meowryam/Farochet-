@@ -14,14 +14,14 @@ describe("GET /api/health", () => {
 
   it("allows the configured local frontend origin", async () => {
     const previousOrigin = process.env.FRONTEND_URL;
-    process.env.FRONTEND_URL = "http://localhost:5173";
+    process.env.FRONTEND_URL = "http://localhost:5174";
 
     try {
       const response = await request(createApp())
         .get("/api/health")
-        .set("Origin", "http://localhost:5173");
+        .set("Origin", "http://localhost:5174");
 
-      expect(response.headers["access-control-allow-origin"]).toBe("http://localhost:5173");
+      expect(response.headers["access-control-allow-origin"]).toBe("http://localhost:5174");
     } finally {
       if (previousOrigin === undefined) {
         delete process.env.FRONTEND_URL;
@@ -29,6 +29,14 @@ describe("GET /api/health", () => {
         process.env.FRONTEND_URL = previousOrigin;
       }
     }
+  });
+
+  it("does not allow the retired local frontend origin", async () => {
+    const response = await request(createApp())
+      .get("/api/health")
+      .set("Origin", "http://localhost:5173");
+
+    expect(response.headers["access-control-allow-origin"]).toBeUndefined();
   });
 });
 

@@ -194,6 +194,29 @@ export function getAdminInquiry(id) {
   return request(`/admin/inquiries/${encodeURIComponent(id)}`).then((data) => data.inquiry);
 }
 
+export function submitCustomerInquiry(details, token = getCustomerAccessToken()) {
+  return request("/customer/inquiries", {
+    token,
+    clearTokenOnUnauthorized: clearCustomerAccessToken,
+    method: "POST",
+    body: JSON.stringify(details),
+  }).then((data) => data.inquiry);
+}
+
+export function listMyInquiries(token = getCustomerAccessToken()) {
+  return request("/customer/inquiries", {
+    token,
+    clearTokenOnUnauthorized: clearCustomerAccessToken,
+  }).then((data) => data.inquiries);
+}
+
+export function getMyInquiry(id, token = getCustomerAccessToken()) {
+  return request(`/customer/inquiries/${encodeURIComponent(id)}`, {
+    token,
+    clearTokenOnUnauthorized: clearCustomerAccessToken,
+  }).then((data) => data.inquiry);
+}
+
 export function listAdminOrders() {
   return request("/admin/orders").then((data) => data.orders);
 }

@@ -46,7 +46,7 @@ function createAuthController({
   supabaseUrl = process.env.SUPABASE_URL,
   publishableKey = process.env.SUPABASE_PUBLISHABLE_KEY,
   serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY,
-  frontendUrl = process.env.FRONTEND_URL ?? "http://localhost:5173",
+  frontendUrl = process.env.FRONTEND_URL ?? "http://localhost:5174",
   logger = console,
 } = {}) {
   function authConfigurationError() {

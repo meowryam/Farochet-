@@ -12,12 +12,22 @@ import {
   listAdminInquiries,
 } from "../../services/api";
 
-const INQUIRY_NAV_ITEMS = [
-  { label: "Products", href: "/admin/products", key: "products" },
-  { label: "Inquiries", href: "/admin/inquiries", key: "inquiries" },
-];
+function CustomerIdentity({ inquiry }) {
+  const displayName = typeof inquiry.customerName === "string" && inquiry.customerName.trim()
+    ? inquiry.customerName.trim()
+    : "Name unavailable";
+  const email = typeof inquiry.customerEmail === "string" && inquiry.customerEmail.trim()
+    ? inquiry.customerEmail.trim()
+    : "Email unavailable";
 
-const CUSTOMER_CONTEXT_FALLBACK = "Customer name and email not available yet";
+  return (
+    <div className="inquiry-customer-identity">
+      <strong>{displayName}</strong>
+      <p>{email}</p>
+      <small>Customer ID: {inquiry.customerId}</small>
+    </div>
+  );
+}
 
 function formatDate(value) {
   return new Date(value).toLocaleString("en-PK", {
@@ -75,7 +85,7 @@ export default function InquiryManagementPage() {
   }
 
   return (
-    <AdminShell activeKey="inquiries" navItems={INQUIRY_NAV_ITEMS} logoutHref={null}>
+    <AdminShell activeKey="inquiries" logoutHref={null}>
       <PageHeader
         eyebrow="Farochet Admin"
         title="Customer Inquiries"
@@ -125,12 +135,7 @@ export default function InquiryManagementPage() {
                         <td>{inquiry.id}</td>
                         <td>{formatDate(inquiry.createdAt)}</td>
                         <td>
-                          <div className="catalogue-product-summary">
-                            <div>
-                              <strong>{inquiry.customerId}</strong>
-                              <p>{CUSTOMER_CONTEXT_FALLBACK}</p>
-                            </div>
-                          </div>
+                          <CustomerIdentity inquiry={inquiry} />
                         </td>
                         <td>{inquiry.productName ?? "No linked product"}</td>
                         <td>{inquiry.message}</td>
@@ -169,8 +174,7 @@ export default function InquiryManagementPage() {
                   </div>
                   <div className="catalogue-form-wide">
                     <strong>Customer context</strong>
-                    <p>{selectedInquiry.customerId}</p>
-                    <p>{CUSTOMER_CONTEXT_FALLBACK}</p>
+                    <CustomerIdentity inquiry={selectedInquiry} />
                   </div>
                   <div className="catalogue-form-wide">
                     <p>This is a saved Inquiry. It is not a Pending Order Request or confirmed Order.</p>

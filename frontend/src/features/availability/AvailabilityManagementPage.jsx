@@ -12,10 +12,6 @@ import {
   updateAdminAvailability,
 } from "../../services/api";
 
-const AVAILABILITY_NAV_ITEMS = [
-  { label: "Availability", href: "/admin/availability", key: "availability" },
-];
-
 export default function AvailabilityManagementPage() {
   const { signOut } = useAuth();
   const navigate = useNavigate();
@@ -72,7 +68,7 @@ export default function AvailabilityManagementPage() {
   }
 
   return (
-    <AdminShell activeKey="availability" navItems={AVAILABILITY_NAV_ITEMS} logoutHref={null}>
+    <AdminShell activeKey="availability" logoutHref={null}>
       <PageHeader
         eyebrow="Farochet Admin"
         title="Availability Management"

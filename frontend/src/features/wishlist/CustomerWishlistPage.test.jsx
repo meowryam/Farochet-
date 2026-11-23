@@ -92,6 +92,8 @@ describe("CustomerWishlistPage", () => {
       .toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Explore Catalogue" }))
       .toHaveAttribute("href", "/catalogue");
+    expect(screen.getByRole("link", { name: "My Inquiries" }))
+      .toHaveAttribute("href", "/inquiries");
   });
 
   it("renders saved products and removes an item after backend confirmation", async () => {
