@@ -2,14 +2,18 @@ import express from "express";
 import cors from "cors";
 import repository from "./data-access/repositories/index.ts";
 import productManagement, { createProductManagement } from "./business-logic/product/index.js";
-import inquiryManagement, { createInquiryManagement } from "./business-logic/inquiry/index.js";
+import { createInquiryManagement } from "./business-logic/inquiry/index.js";
 import { createCustomizationAndQuotationManagement } from "./business-logic/customization/index.js";
 import orderManagement, { createOrderManagement } from "./business-logic/order/index.js";
 import availabilityManagement, { createAvailabilityManagement } from "./business-logic/availability/index.js";
 import statusManagement, { createStatusManagement } from "./business-logic/status/index.js";
 import pricingAndDiscountManagement from "./business-logic/pricing/index.js";
 import { createPricingAndDiscountManagement } from "./business-logic/pricing/index.js";
+<<<<<<< HEAD
 import wishlistManagement, { createWishlistManagement } from "./business-logic/wishlist/index.js";
+=======
+import { createWishlistManagement } from "./business-logic/wishlist/index.js";
+>>>>>>> 9a9ecf1 (c4m1)
 import {
   authenticateRequest,
   createSupabaseIdentityVerification,
@@ -18,10 +22,15 @@ import healthRoutes from "./presentation/routes/health.routes.js";
 import { createAuthRoutes } from "./presentation/routes/auth.routes.js";
 import { createProductRoutes, createPublicProductRoutes } from "./presentation/routes/product.routes.js";
 import { createCustomerInquiryRoutes, createInquiryRoutes } from "./presentation/routes/inquiry.routes.js";
+<<<<<<< HEAD
 import {
   createCustomizationRoutes,
   createAdminCustomizationRoutes,
 } from "./presentation/routes/customization.routes.js";
+=======
+import { createWishlistRoutes } from "./presentation/routes/wishlist.routes.js";
+import { createCustomizationRoutes } from "./presentation/routes/customization.routes.js";
+>>>>>>> 9a9ecf1 (c4m1)
 import { createOrderRoutes } from "./presentation/routes/order.routes.js";
 import { createAvailabilityRoutes } from "./presentation/routes/availability.routes.js";
 import {
@@ -58,16 +67,20 @@ export function createApp({
           pricingAndDiscountManagement: pricing,
         })
   );
-  const inquiries = inquiryManagementOverride ?? (
-    dataRepository === repository
-      ? inquiryManagement
-      : createInquiryManagement({ repository: dataRepository })
-  );
+  const inquiries = inquiryManagementOverride ?? createInquiryManagement({
+    repository: dataRepository,
+    productManagement: products,
+  });
   const customizations = customizationManagementOverride
     ?? createCustomizationAndQuotationManagement({
       repository: dataRepository,
+      productManagement: products,
       imageStorage,
     });
+  const wishlist = createWishlistManagement({
+    repository: dataRepository,
+    productManagement: products,
+  });
   const orders = orderManagementOverride ?? (
     dataRepository === repository
       ? orderManagement
@@ -144,10 +157,18 @@ export function createApp({
   );
   app.use(
     "/api/customer/inquiries",
+<<<<<<< HEAD
     createCustomerInquiryRoutes({
       inquiryManagement: inquiries,
       authenticate: authenticateCustomer,
     }),
+=======
+    createCustomerInquiryRoutes({ inquiryManagement: inquiries, authenticate: authenticateCustomer }),
+  );
+  app.use(
+    "/api/customer/wishlist",
+    createWishlistRoutes({ wishlistManagement: wishlist, authenticate: authenticateCustomer }),
+>>>>>>> 9a9ecf1 (c4m1)
   );
   app.use("/api/admin/orders", orderRoutes.adminRouter);
   app.use("/api/admin/availability", availabilityRoutes.adminRouter);

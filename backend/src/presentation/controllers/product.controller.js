@@ -42,7 +42,9 @@ function toPublicProduct(product) {
     description: product.description,
     category: product.category,
     images: product.images,
-    basePrice: product.basePrice,
+    standardCataloguePrice: product.standardCataloguePrice,
+    effectivePublicPrice: product.effectivePublicPrice,
+    fixedDiscountAmount: product.fixedDiscountAmount,
   };
 }
 

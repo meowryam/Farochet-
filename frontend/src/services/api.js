@@ -121,6 +121,38 @@ export function listProducts() {
     });
 }
 
+export function getPublicProduct(id) {
+  return fetch(`${API_BASE_URL}/products/${encodeURIComponent(id)}`, {
+    headers: { Accept: "application/json" },
+  }).then(async (response) => {
+    const data = await response.json();
+    if (!response.ok) {
+      const error = new Error(data?.error?.message ?? `Backend responded with HTTP ${response.status}.`);
+      error.code = data?.error?.code;
+      error.status = response.status;
+      throw error;
+    }
+    return data.product;
+  });
+}
+
+export function submitCustomerInquiry(inquiry) {
+  return request("/customer/inquiries", {
+    method: "POST",
+    body: JSON.stringify(inquiry),
+  }).then((data) => data.inquiry);
+}
+
+export function getWishlistProductStatus(productId) {
+  return request(`/customer/wishlist/${encodeURIComponent(productId)}`);
+}
+
+export function addWishlistProduct(productId) {
+  return request(`/customer/wishlist/${encodeURIComponent(productId)}`, {
+    method: "PUT",
+  });
+}
+
 export function getPublicPricing() {
   return fetch(`${API_BASE_URL}/pricing/public`, { headers: { Accept: "application/json" } })
     .then(async (response) => {

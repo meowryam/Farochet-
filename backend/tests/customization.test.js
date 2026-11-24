@@ -13,6 +13,7 @@ function createMemoryRepository() {
   const inquiries = [];
   const customizations = [];
   const pendingOrderRequests = [];
+<<<<<<< HEAD
   const users = new Map();
   const orders = [];
 
@@ -36,13 +37,28 @@ function createMemoryRepository() {
       } : null,
     };
   }
+=======
+  const products = [];
+>>>>>>> 9a9ecf1 (c4m1)
 
   return {
     inquiries,
     customizations,
     pendingOrderRequests,
+<<<<<<< HEAD
     users,
     orders,
+=======
+    products,
+
+    async findProductById(id) {
+      return products.find((product) => product.id === id) ?? null;
+    },
+
+    async getPublicDiscount() {
+      return null;
+    },
+>>>>>>> 9a9ecf1 (c4m1)
 
     async createCustomizationRequest({ inquiry, customization }) {
       const createdInquiry = { id: randomUUID(), createdAt: new Date(), ...inquiry };
@@ -223,6 +239,23 @@ describe("Customization Request Submission API (FR-09)", () => {
       referenceImages: [],
     });
     expect(dataRepository.inquiries[0].message).toBe("");
+  });
+
+  it("keeps a catalogue-based custom request linked to its Product through the Inquiry", async () => {
+    const product = { id: randomUUID(), name: "Crochet rose", isArchived: false, basePrice: 1000 };
+    dataRepository.products.push(product);
+
+    const response = await request(app)
+      .post("/api/customer/customization/requests")
+      .send(validBody({ productId: product.id }))
+      .expect(201);
+
+    expect(dataRepository.inquiries[0]).toMatchObject({
+      id: response.body.customization.inquiryId,
+      productId: product.id,
+    });
+    expect(response.body.customization).not.toHaveProperty("productId");
+    expect(response.body.pendingOrderRequest).not.toHaveProperty("inquiryId");
   });
 
   it("rejects a missing product type", async () => {

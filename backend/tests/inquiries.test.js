@@ -16,6 +16,16 @@ function createMemoryRepository() {
       return products.find((product) => product.id === id) ?? null;
     },
 
+    async getPublicDiscount() {
+      return null;
+    },
+
+    async createInquiry(data) {
+      const inquiry = { id: randomUUID(), createdAt: new Date(), ...data };
+      inquiries.push(inquiry);
+      return inquiry;
+    },
+
     async listInquiries() {
       return [...inquiries]
         .sort((left, right) => right.createdAt - left.createdAt)
@@ -191,6 +201,46 @@ describe("Inquiry Review & Management API", () => {
       .set("x-user-role", "RAAZIA")
       .set("x-user-id", "forged-user-id")
       .expect(401);
+  });
+
+  it("lets a Customer submit an Inquiry linked to a listed Product", async () => {
+    const product = await seedProduct(dataRepository, "Crochet rose");
+    const customerApp = createApp({
+      dataRepository,
+      authenticateCustomer: customerSession(),
+    });
+
+    await request(customerApp)
+      .post("/api/customer/inquiries")
+      .send({ productId: product.id, message: "Could you share more details?" })
+      .expect(201)
+      .expect(({ body }) => {
+        expect(body.inquiry).toMatchObject({
+          id: expect.any(String),
+          productId: product.id,
+          message: "Could you share more details?",
+        });
+        expect(body.inquiry).not.toHaveProperty("customerId");
+      });
+    expect(dataRepository.inquiries).toHaveLength(1);
+    expect(dataRepository.inquiries[0].customerId).toBe("customer-test-user");
+  });
+
+  it("rejects an empty inquiry and unknown product reference", async () => {
+    const customerApp = createApp({
+      dataRepository,
+      authenticateCustomer: customerSession(),
+    });
+
+    await request(customerApp)
+      .post("/api/customer/inquiries")
+      .send({ message: "  " })
+      .expect(400);
+    await request(customerApp)
+      .post("/api/customer/inquiries")
+      .send({ productId: randomUUID(), message: "Is this product available?" })
+      .expect(404);
+    expect(dataRepository.inquiries).toHaveLength(0);
   });
 
   it("does not allow a Customer session to review inquiries", async () => {

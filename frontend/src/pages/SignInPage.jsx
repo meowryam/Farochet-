@@ -34,11 +34,11 @@ export default function SignInPage({ adminOnly = false }) {
         setError("This account cannot access the Farochet Admin workspace.");
         return;
       }
-      navigate(
-        location.state?.from?.pathname
-          ?? (profile.role === "RAAZIA" ? "/admin/products" : "/account"),
-        { replace: true },
-      );
+      const returnPath = location.state?.from?.pathname;
+      const destination = returnPath
+        ? `${returnPath}${location.state.from.search ?? ""}${location.state.from.hash ?? ""}`
+        : profile.role === "RAAZIA" ? "/admin/products" : "/account";
+      navigate(destination, { replace: true });
     } catch (signInError) {
       setError(signInError instanceof Error ? signInError.message : "Sign-in could not be completed.");
       setProfileSetupRequired(signInError?.code === "APPLICATION_PROFILE_REQUIRED");

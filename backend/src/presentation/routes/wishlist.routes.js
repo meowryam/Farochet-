@@ -15,12 +15,20 @@ function createWishlistRoutes({
   const controller = createWishlistController(wishlistManagement);
 
   router.use(authenticate, requireRole("CUSTOMER"));
+<<<<<<< HEAD
   router.get("/", controller.list);
   router.post("/", controller.add);
   router.delete("/:productId", controller.remove);
+=======
+  router.get("/:productId", controller.checkProduct);
+  router.put("/:productId", controller.addProduct);
+>>>>>>> 9a9ecf1 (c4m1)
 
   return router;
 }
 
+<<<<<<< HEAD
 export default createWishlistRoutes;
+=======
+>>>>>>> 9a9ecf1 (c4m1)
 export { createWishlistRoutes };

@@ -8,6 +8,7 @@ function wishlistError(message, status, code) {
   return error;
 }
 
+<<<<<<< HEAD
 function requireCustomer(user) {
   if (!user || user.role !== "CUSTOMER" || typeof user.id !== "string" || !user.id) {
     throw wishlistError(
@@ -81,6 +82,34 @@ function createWishlistManagement({
           "WISHLIST_ITEM_NOT_FOUND",
         );
       }
+=======
+function createWishlistManagement({ repository, productManagement }) {
+  if (!repository || !productManagement) {
+    throw new Error("Wishlist Management requires the centralized Repository and Product Management.");
+  }
+
+  async function assertCustomerAndListedProduct(viewer, productId) {
+    if (!viewer) {
+      throw wishlistError("Authentication is required.", 401, "AUTHENTICATION_REQUIRED");
+    }
+    if (viewer.role !== "CUSTOMER") {
+      throw wishlistError("This operation is not permitted for this account.", 403, "FORBIDDEN");
+    }
+    await productManagement.getCatalogueProduct(productId);
+  }
+
+  return {
+    isProductSaved: async (viewer, productId) => {
+      await assertCustomerAndListedProduct(viewer, productId);
+      const item = await repository.findWishlistItem(viewer.id, productId);
+      return { productId, saved: Boolean(item) };
+    },
+
+    addWishlistItem: async (viewer, productId) => {
+      await assertCustomerAndListedProduct(viewer, productId);
+      await repository.addWishlistItem(viewer.id, productId);
+      return { productId, saved: true };
+>>>>>>> 9a9ecf1 (c4m1)
     },
   };
 }

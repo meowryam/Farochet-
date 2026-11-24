@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import Alert from "../../components/ui/Alert";
 import Button from "../../components/ui/Button";
 import Card from "../../components/ui/Card";
@@ -7,7 +8,7 @@ import TextArea from "../../components/ui/TextArea";
 import ContentContainer from "../../components/layout/ContentContainer";
 import CustomerShell from "../../components/layout/CustomerShell";
 import PageHeader from "../../components/layout/PageHeader";
-import { submitCustomizationRequest } from "../../services/api";
+import { getPublicProduct, submitCustomizationRequest } from "../../services/api";
 
 const INITIAL_FORM = {
   productType: "",
@@ -43,11 +44,46 @@ function readImage(file) {
 }
 
 export default function CustomizationRequestPage() {
+  const [searchParams] = useSearchParams();
+  const productId = searchParams.get("productId");
   const [form, setForm] = useState(INITIAL_FORM);
   const [files, setFiles] = useState([]);
   const [error, setError] = useState("");
+  const [productError, setProductError] = useState("");
+  const [productLoading, setProductLoading] = useState(Boolean(productId));
   const [result, setResult] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (!productId) {
+      setProductLoading(false);
+      setProductError("");
+      return undefined;
+    }
+
+    let active = true;
+    setProductLoading(true);
+    setProductError("");
+    getPublicProduct(productId)
+      .then((product) => {
+        if (active) {
+          setForm((current) => ({
+            ...current,
+            productType: current.productType || product.name,
+          }));
+        }
+      })
+      .catch((loadError) => {
+        if (active) setProductError(loadError.message);
+      })
+      .finally(() => {
+        if (active) setProductLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [productId]);
 
   function update(field) {
     return (event) => {
@@ -67,6 +103,7 @@ export default function CustomizationRequestPage() {
     try {
       const referenceImages = await Promise.all(Array.from(files).map(readImage));
       const submission = await submitCustomizationRequest({
+        ...(productId ? { productId } : {}),
         productType: form.productType,
         quantity: form.quantity,
         size: optional(form.size),
@@ -102,6 +139,11 @@ export default function CustomizationRequestPage() {
           description="Product type and quantity are required. Everything else is optional."
         >
           {error && <Alert tone="error">{error}</Alert>}
+          {productError && (
+            <Alert tone="error" title="The selected product is no longer available">
+              {productError}
+            </Alert>
+          )}
           {result && (
             <Alert tone="success" title="Request submitted">
               Your request is recorded as pending for review.
@@ -169,7 +211,9 @@ export default function CustomizationRequestPage() {
               </span>
             </div>
 
-            <Button type="submit" loading={submitting}>Submit request</Button>
+            <Button type="submit" loading={submitting || productLoading} disabled={Boolean(productError)}>
+              Submit request
+            </Button>
           </form>
         </Card>
       </ContentContainer>

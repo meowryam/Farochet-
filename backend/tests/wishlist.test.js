@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import request from "supertest";
 import { createApp } from "../src/app.js";
 
+<<<<<<< HEAD
 function createMemoryRepository() {
   const products = [];
   const wishlistItems = [];
@@ -41,10 +42,42 @@ function createMemoryRepository() {
       if (index < 0) return false;
       wishlistItems.splice(index, 1);
       return true;
+=======
+const CUSTOMER_A = "11111111-1111-4111-8111-111111111111";
+const CUSTOMER_B = "22222222-2222-4222-8222-222222222222";
+
+function createMemoryRepository() {
+  const products = [];
+  const items = [];
+
+  return {
+    products,
+    items,
+    async findProductById(id) {
+      return products.find((product) => product.id === id) ?? null;
+    },
+    async listProducts({ includeArchived = false } = {}) {
+      return products.filter((product) => includeArchived || !product.isArchived);
+    },
+    async getPublicDiscount() {
+      return null;
+    },
+    async findWishlistItem(customerId, productId) {
+      return items.find((item) => item.customerId === customerId && item.productId === productId) ?? null;
+    },
+    async addWishlistItem(customerId, productId) {
+      let item = await this.findWishlistItem(customerId, productId);
+      if (!item) {
+        item = { id: randomUUID(), customerId, productId, createdAt: new Date() };
+        items.push(item);
+      }
+      return item;
+>>>>>>> 9a9ecf1 (c4m1)
     },
   };
 }
 
+<<<<<<< HEAD
 const CUSTOMER_A = randomUUID();
 const CUSTOMER_B = randomUUID();
 const PRODUCT = {
@@ -57,11 +90,16 @@ const PRODUCT = {
 
 function customerSession(id) {
   return function authenticateCustomer(req, _res, next) {
+=======
+function customerSession(id) {
+  return (req, _res, next) => {
+>>>>>>> 9a9ecf1 (c4m1)
     req.authenticatedUser = { id, role: "CUSTOMER" };
     next();
   };
 }
 
+<<<<<<< HEAD
 function raaziaSession(req, _res, next) {
   req.authenticatedUser = { id: randomUUID(), role: "RAAZIA" };
   next();
@@ -250,5 +288,67 @@ describe("Customer Wishlist API", () => {
     await request(raaziaApp)
       .get("/api/customer/wishlist")
       .expect(403);
+=======
+describe("Product detail wishlist actions (FR-16)", () => {
+  let dataRepository;
+  let product;
+
+  beforeEach(() => {
+    dataRepository = createMemoryRepository();
+    product = {
+      id: randomUUID(),
+      name: "Crochet flower",
+      basePrice: 1250,
+      images: [],
+      isArchived: false,
+    };
+    dataRepository.products.push(product);
+  });
+
+  it("adds idempotently and reports saved state only for the authenticated Customer", async () => {
+    const appA = createApp({
+      dataRepository,
+      authenticateCustomer: customerSession(CUSTOMER_A),
+    });
+
+    await request(appA)
+      .get(`/api/customer/wishlist/${product.id}`)
+      .expect(200)
+      .expect(({ body }) => expect(body).toEqual({ productId: product.id, saved: false }));
+
+    await request(appA).put(`/api/customer/wishlist/${product.id}`).expect(200);
+    await request(appA).put(`/api/customer/wishlist/${product.id}`).expect(200);
+    expect(dataRepository.items).toHaveLength(1);
+
+    await request(appA)
+      .get(`/api/customer/wishlist/${product.id}`)
+      .expect(200)
+      .expect(({ body }) => expect(body).toEqual({ productId: product.id, saved: true }));
+
+    const appB = createApp({
+      dataRepository,
+      authenticateCustomer: customerSession(CUSTOMER_B),
+    });
+    await request(appB)
+      .get(`/api/customer/wishlist/${product.id}`)
+      .expect(200)
+      .expect(({ body }) => expect(body.saved).toBe(false));
+  });
+
+  it("requires a Customer session and a listed product", async () => {
+    const anonymous = createApp({ dataRepository });
+    await request(anonymous).get(`/api/customer/wishlist/${product.id}`).expect(401);
+    await request(anonymous).put(`/api/customer/wishlist/${product.id}`).expect(401);
+
+    const customer = createApp({
+      dataRepository,
+      authenticateCustomer: customerSession(CUSTOMER_A),
+    });
+    await request(customer).get("/api/customer/wishlist/not-a-uuid").expect(400);
+
+    product.isArchived = true;
+    await request(customer).put(`/api/customer/wishlist/${product.id}`).expect(404);
+    expect(dataRepository.items).toHaveLength(0);
+>>>>>>> 9a9ecf1 (c4m1)
   });
 });

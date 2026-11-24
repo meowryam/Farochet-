@@ -92,10 +92,31 @@ function createPricingAndDiscountManagement({ repository }) {
         category: product.category,
         images: product.images,
         isArchived: product.isArchived,
-        standardCataloguePrice: product.basePrice,
-        effectivePublicPrice: active ? product.basePrice - fixedDiscountAmount : product.basePrice,
+        ...publicPrice(product.basePrice, active ? fixedDiscountAmount : null),
       })),
     };
+  }
+
+  function publicPrice(standardCataloguePrice, fixedDiscountAmount) {
+    return {
+      standardCataloguePrice,
+      effectivePublicPrice: fixedDiscountAmount == null
+        ? standardCataloguePrice
+        : standardCataloguePrice - fixedDiscountAmount,
+      fixedDiscountAmount,
+    };
+  }
+
+  async function addPublicPricing(products) {
+    const discount = await repository.getPublicDiscount();
+    const fixedDiscountAmount = discount?.active && Number.isSafeInteger(discount.fixedDiscountAmount)
+      ? discount.fixedDiscountAmount
+      : null;
+
+    return products.map((product) => ({
+      ...product,
+      ...publicPrice(product.basePrice, fixedDiscountAmount),
+    }));
   }
 
   async function validateStandardPriceUpdate(basePrice) {
@@ -117,6 +138,7 @@ function createPricingAndDiscountManagement({ repository }) {
     activateOrUpdatePublicDiscount,
     removePublicDiscount,
     getPublicPricingState,
+    addPublicPricing,
     validateStandardPriceUpdate,
   };
 }

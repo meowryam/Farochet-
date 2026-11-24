@@ -10,6 +10,7 @@ function customizationError(message, status, code) {
 
 function createCustomizationAndQuotationManagement({
   repository: dataRepository,
+  productManagement,
   imageStorage = createInMemoryImageStorage(),
 } = {}) {
   if (!dataRepository) {
@@ -105,6 +106,13 @@ function createCustomizationAndQuotationManagement({
         );
       }
 
+      if (input.productId) {
+        if (!productManagement) {
+          throw customizationError("Product information is not available.", 503, "PRODUCT_MANAGEMENT_UNAVAILABLE");
+        }
+        await productManagement.getCatalogueProduct(input.productId);
+      }
+
       // The owner is always the authenticated viewer. Any client-supplied
       // customer identity is ignored and cannot be carried into persistence.
       const storedImages = await imageStorage.storeImages({
@@ -115,6 +123,7 @@ function createCustomizationAndQuotationManagement({
       return dataRepository.createCustomizationRequest({
         inquiry: {
           customerId: viewer.id,
+          productId: input.productId ?? null,
           message: input.specialInstructions ?? "",
         },
         customization: {

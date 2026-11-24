@@ -57,12 +57,16 @@ function createProductManagement({ repository, pricingAndDiscountManagement }) {
   return {
     listProducts: async () => repository.listProducts({ includeArchived: true }),
 
-    listCatalogue: async () => repository.listProducts({ includeArchived: false }),
+    listCatalogue: async () => {
+      const products = await repository.listProducts({ includeArchived: false });
+      return pricingAndDiscountManagement.addPublicPricing(products);
+    },
 
     getCatalogueProduct: async (id) => {
       const product = await repository.findProductById(id);
       if (!product || product.isArchived) throw productNotFound();
-      return product;
+      const [pricedProduct] = await pricingAndDiscountManagement.addPublicPricing([product]);
+      return pricedProduct;
     },
 
     getProduct: async (id) => {

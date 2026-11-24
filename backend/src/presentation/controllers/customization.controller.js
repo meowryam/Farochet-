@@ -47,6 +47,7 @@ const referenceImageSchema = z.object({
 });
 
 const customizationInputSchema = z.object({
+  productId: z.string().uuid().optional(),
   productType: z.string().trim().min(1, "Product type is required."),
   quantity: z.number().int().min(1, "Quantity must be at least 1."),
   size: z.string().trim().min(1).nullable().optional(),

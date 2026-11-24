@@ -296,6 +296,7 @@ _Add new slice entries below._
 - **Integration status:** Implemented in the working tree; not committed or migrated.
 - **Evidence link(s):** `backend/tests/products.test.js`; `frontend/src/features/catalogue/CustomerCataloguePage.jsx`; `frontend/src/features/catalogue/ProductCard.jsx`; `docs/evidence/Testing_Evidence_Log.md`.
 
+<<<<<<< HEAD
 ### C4-M2 — Wishlist Management
 
 - **Related PRD requirements:** FR-16; NFR-02; ADR-004; ADR-006.
@@ -440,3 +441,36 @@ _Add new slice entries below._
 - **Major issue/change:** The repository still reports a rebase in progress with `REBASE_HEAD` pointing to the existing Wishlist commit, although that commit is already in remote history. `git rebase --quit` could not remove `.git/rebase-merge` because of its deny-delete ACL. No rebase continuation, commit, push, ACL change, or destructive Git action was performed. The re-applied Member 2 work remains staged, and the original work remains in `stash@{0}`.
 - **Integration status:** No Member 2 commit or push; must clear the stale Git operation metadata before committing safely.
 - **Evidence link(s):** `frontend/src/components/layout/AdminShell.test.jsx`; `frontend/src/components/layout/AdminSidebar.test.jsx`; `frontend/src/features/catalogue/ProductManagementPage.test.jsx`; `frontend/src/features/inquiries/InquiryManagementPage.test.jsx`; `docs/evidence/Testing_Evidence_Log.md`.
+=======
+### Cycle 4 — Member 1 Product Details
+
+- **Related PRD requirements:** FR-01, FR-05, FR-09, FR-16; ADR-001 through ADR-006.
+- **Owner:** Member 1.
+- **Plan version:** 1.8 (active plan; Cycle 4 scope in Section 12).
+- **Branch / Pull Request / merge:** `main` working tree; no commit or push.
+- **HITL / AFK mode:** AFK implementation followed by local automated verification.
+- **Reason for mode:** The existing Product, Inquiry, Customization, Pricing and React page contracts provided implementation points for the narrow product-detail actions.
+- **AI chat/task reference:** Current Copilot chat — Member 1 Cycle 4 Product Details.
+- **Context supplied to agent:** PRD v1.4; `plan.md` Sections 4 and 12; architecture; ADR-001 through ADR-006; `AGENTS.md`; `Guardrails.md`; Farochet UI Kit v1.1 guidelines, screen specification, component catalog, workflow and visual notes.
+- **Acceptance criteria:** Public product detail and uniform public pricing; unknown/malformed product handling; product inquiry submission; product-specific customization handoff preserving Inquiry → Customization → PendingOrderRequest; customer-authenticated add/check wishlist action; loading, error and missing-image states; no private price or stock exposure.
+- **Important iterations/corrections:**
+  - The public Product DTO now exposes `standardCataloguePrice`, `effectivePublicPrice`, and nullable `fixedDiscountAmount`, derived by Pricing and Discount Management and projected through Product Management; the Standard Catalogue Price remains unchanged.
+  - The product-card links open `/products/:id`. Unauthenticated Customer actions route through the existing sign-in flow; sign-in preserves the original search query for the product-specific customization handoff.
+  - Customer inquiry submission is exposed at `POST /api/customer/inquiries`; the authenticated identity supplies `customerId`.
+  - The existing `POST /api/customer/customization/requests` workflow accepts an optional originating `productId` and records it on the generated Inquiry without adding a direct Inquiry link to PendingOrderRequest.
+  - Product detail Wishlist actions use only customer-scoped `GET`/`PUT /api/customer/wishlist/:productId`; no standalone Wishlist page, listing, or removal API was added. The pair is unique and add is idempotent.
+- **Migration reconciliation:**
+  - Restored the local migration definitions `20261122192000_customer_wishlist` and `20261123024800_allow_runtime_inquiry_submission`; both are already applied in the shared database, and `prisma migrate status` reports no modified/missing applied migrations.
+  - Reconciled the schema to the shared database by adding the existing WishlistItem `(customerId, createdAt)` index and removing the schema-only `"current"` defaults from `PublicDiscount.id` and `RaaziaAvailability.id`; repository upserts explicitly set `"current"`.
+  - Added pending migration `20261123200000_customization_request_lifecycle` for `Customization` and `PendingOrderRequest`, including their Inquiry/Customization foreign keys, indexes, RLS policies and runtime permissions. The pending request references only `Customization`, not Inquiry directly.
+  - Read-only database diff now reports only those two not-yet-deployed tables and their corresponding indexes/foreign keys. The earlier un-applied `20261123200000_product_detail_customer_actions` placeholder was removed; its Wishlist and Inquiry-permission contents already exist in the restored, applied migrations.
+  - Existing historical migrations `20261119190000_inquiry_management` and `20261119233000_user_roles_and_inquiry_relation` both create `Inquiry`. They were left untouched as required; this is a pre-existing clean-empty-database replay caveat and does not appear as drift in the already-migrated shared database.
+- **Rejected/revised approach (if any):** No cart/checkout, stock fields, private Negotiated/Approved prices, wishlist manager page, Member 3 quotation/negotiation work, or Member 4 delivery work was introduced.
+- **Tests/checks actually run:** `backend/npm test`; `frontend/npm run build`; `backend/npx prisma validate`; `backend/npx prisma format --check`; `backend/npx prisma generate`; read-only `backend/npx prisma migrate status`; read-only `backend/npx prisma migrate diff --from-config-datasource --to-schema=prisma/schema.prisma --exit-code`.
+- **Actual results:** Backend Vitest/Supertest: 11 test files and 96 tests passed. Frontend build succeeded with 107 modules; Vite emitted a chunk-size advisory for the 546.63 kB JS chunk. Prisma validation, format check and client generation passed. Migration status found 11 migrations with only `20261123200000_customization_request_lifecycle` pending (exit 1 as expected); database diff showed only `Customization`, `PendingOrderRequest`, and their intended indexes/foreign keys (exit 2 because the schema has not been deployed).
+- **Human decision:** Pending; coding-agent implementation is provisional.
+- **Decision reason:** No migration was deployed and no human browser/UI acceptance was performed.
+- **Major issue/change:** The shared database still needs `20261123200000_customization_request_lifecycle` deployed before the product-specific customization workflow can persist there. The read-only diff was run against the configured datasource; no `migrate deploy` was run.
+- **Integration status:** Implemented and locally tested; the migration files are reconciled and ready for deployment. Live customization persistence and human acceptance remain outstanding.
+- **Evidence link(s):** `backend/tests/products.test.js`; `backend/tests/inquiries.test.js`; `backend/tests/customization.test.js`; `backend/tests/wishlist.test.js`; `frontend/src/features/catalogue/ProductDetailsPage.jsx`; `backend/prisma/migrations/20261122192000_customer_wishlist/migration.sql`; `backend/prisma/migrations/20261123024800_allow_runtime_inquiry_submission/migration.sql`; `backend/prisma/migrations/20261123200000_customization_request_lifecycle/migration.sql`.
+>>>>>>> 9a9ecf1 (c4m1)

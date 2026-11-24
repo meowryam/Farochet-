@@ -220,12 +220,14 @@ describe("Public Product Catalogue API", () => {
     expect(response.body.products[0]).toMatchObject({
       id: listed.id,
       name: validProduct.name,
-      basePrice: validProduct.basePrice,
+      standardCataloguePrice: validProduct.basePrice,
+      effectivePublicPrice: validProduct.basePrice,
+      fixedDiscountAmount: null,
     });
     expect(response.body.products[0]).not.toHaveProperty("isArchived");
   });
 
-  it("retrieves a listed product by ID and rejects archived or unknown products", async () => {
+  it("retrieves full listed product details and rejects archived or unknown products", async () => {
     const listed = await dataRepository.createProduct(validProduct);
     const archived = await dataRepository.createProduct({
       ...validProduct,
@@ -239,10 +241,63 @@ describe("Public Product Catalogue API", () => {
       .expect(({ body }) => expect(body.product).toMatchObject({
         id: listed.id,
         name: validProduct.name,
-        basePrice: validProduct.basePrice,
+        description: validProduct.description,
+        category: validProduct.category,
+        images: validProduct.images,
+        standardCataloguePrice: validProduct.basePrice,
+        effectivePublicPrice: validProduct.basePrice,
+        fixedDiscountAmount: null,
       }));
 
     await request(app).get(`/api/products/${archived.id}`).expect(404);
+    await request(app).get(`/api/products/${randomUUID()}`).expect(404);
+  });
+
+  it("applies the active fixed public discount without changing the Standard Catalogue Price", async () => {
+    const listed = await dataRepository.createProduct(validProduct);
+    await dataRepository.upsertPublicDiscount({ active: true, fixedDiscountAmount: 200 });
+
+    await request(app)
+      .get(`/api/products/${listed.id}`)
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body.product).toMatchObject({
+          standardCataloguePrice: 1250,
+          effectivePublicPrice: 1050,
+          fixedDiscountAmount: 200,
+        });
+        expect(body.product).not.toHaveProperty("basePrice");
+        expect(body.product).not.toHaveProperty("negotiatedPrice");
+        expect(body.product).not.toHaveProperty("approvedPrice");
+        expect(body.product).not.toHaveProperty("negotiatedPriceSnapshot");
+      });
+
+    expect((await dataRepository.findProductById(listed.id)).basePrice).toBe(1250);
+  });
+
+  it("returns an empty optional-image list and preserves every supplied image", async () => {
+    const noImage = await dataRepository.createProduct({ ...validProduct, images: [] });
+    const multipleImages = await dataRepository.createProduct({
+      ...validProduct,
+      images: ["/images/front.jpg", "/images/back.jpg"],
+    });
+
+    await request(app)
+      .get(`/api/products/${noImage.id}`)
+      .expect(200)
+      .expect(({ body }) => expect(body.product.images).toEqual([]));
+
+    await request(app)
+      .get(`/api/products/${multipleImages.id}`)
+      .expect(200)
+      .expect(({ body }) => expect(body.product.images).toEqual([
+        "/images/front.jpg",
+        "/images/back.jpg",
+      ]));
+  });
+
+  it("rejects malformed public product identifiers", async () => {
+    await request(app).get("/api/products/not-a-uuid").expect(400);
   });
 
   it("does not require authentication for public catalogue retrieval", async () => {

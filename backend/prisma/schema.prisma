@@ -72,7 +72,7 @@ model Product {
 }
 
 model PublicDiscount {
-  id                  String   @id @default("current")
+  id                  String   @id
   active              Boolean  @default(false)
   fixedDiscountAmount Int?
   createdAt           DateTime @default(now())
@@ -189,7 +189,7 @@ model WishlistItem {
 }
 
 model RaaziaAvailability {
-  id          String   @id @default("current")
+  id          String   @id
   information String
   updatedAt   DateTime @updatedAt
 }
