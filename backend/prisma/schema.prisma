@@ -22,6 +22,11 @@ enum CustomerRegistrationIntentStatus {
   CONSUMED
 }
 
+enum NegotiationProposer {
+  RAAZIA
+  CUSTOMER
+}
+
 model User {
   id                  String               @id @db.Uuid
   email               String               @unique
@@ -106,8 +111,21 @@ model Customization {
   createdAt              DateTime             @default(now())
   updatedAt              DateTime             @updatedAt
   pendingOrderRequest    PendingOrderRequest?
+  negotiationEntries     NegotiationEntry[]
 
   @@index([inquiryId, createdAt])
+}
+
+model NegotiationEntry {
+  id              String              @id @default(uuid()) @db.Uuid
+  customizationId String              @db.Uuid
+  customization   Customization       @relation(fields: [customizationId], references: [id], onDelete: Restrict)
+  proposer        NegotiationProposer
+  proposedPrice   Int
+  note            String?
+  createdAt       DateTime            @default(now())
+
+  @@index([customizationId, createdAt])
 }
 
 model PendingOrderRequest {

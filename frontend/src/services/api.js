@@ -267,6 +267,34 @@ export function getAdminCustomizationImage(path) {
     .then((data) => data.image);
 }
 
+export function getAdminNegotiation(id) {
+  return request(`/admin/customization/requests/${encodeURIComponent(id)}/negotiation`)
+    .then((data) => data);
+}
+
+export function addAdminNegotiationEntry(id, offer) {
+  return request(`/admin/customization/requests/${encodeURIComponent(id)}/negotiation`, {
+    method: "POST",
+    body: JSON.stringify(offer),
+  }).then((data) => data.entry);
+}
+
+export function getMyNegotiation(id, token = getCustomerAccessToken()) {
+  return request(`/customer/customization/requests/${encodeURIComponent(id)}/negotiation`, {
+    token,
+    clearTokenOnUnauthorized: clearCustomerAccessToken,
+  }).then((data) => data);
+}
+
+export function addMyNegotiationEntry(id, offer, token = getCustomerAccessToken()) {
+  return request(`/customer/customization/requests/${encodeURIComponent(id)}/negotiation`, {
+    token,
+    clearTokenOnUnauthorized: clearCustomerAccessToken,
+    method: "POST",
+    body: JSON.stringify(offer),
+  }).then((data) => data.entry);
+}
+
 export function listMyOrders(token = getCustomerAccessToken()) {
   return request("/orders/my", {
     token,

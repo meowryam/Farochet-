@@ -7,6 +7,7 @@ import OrderManagementPage from "./features/orders/OrderManagementPage";
 import CustomerOrdersPage from "./features/orders/CustomerOrdersPage";
 import CustomizationRequestPage from "./features/customization/CustomizationRequestPage";
 import CustomizationReviewPage from "./features/customization/CustomizationReviewPage";
+import CustomerNegotiationPage from "./features/customization/CustomerNegotiationPage";
 import AvailabilityManagementPage from "./features/availability/AvailabilityManagementPage";
 import AvailabilityPage from "./features/availability/AvailabilityPage";
 import BootstrapStatusPage from "./pages/BootstrapStatusPage";
@@ -54,6 +55,10 @@ export default function App() {
           <Route
             path="/customization/request"
             element={<RequireAuth roles={["CUSTOMER"]}><CustomizationRequestPage /></RequireAuth>}
+          />
+          <Route
+            path="/customization/requests/:id/negotiation"
+            element={<RequireAuth roles={["CUSTOMER"]}><CustomerNegotiationPage /></RequireAuth>}
           />
           <Route path="/orders" element={<CustomerOrdersPage />} />
           <Route path="/availability" element={<AvailabilityPage />} />

@@ -8,10 +8,13 @@ import Card from "../../components/ui/Card";
 import EmptyState from "../../components/ui/EmptyState";
 import { useAuth } from "../../contexts/AuthContext";
 import {
+  addAdminNegotiationEntry,
   getAdminCustomizationImage,
   getAdminCustomizationRequest,
+  getAdminNegotiation,
   listAdminCustomizationRequests,
 } from "../../services/api";
+import NegotiationPanel from "./NegotiationPanel";
 
 const REQUEST_NAV_ITEMS = [
   { label: "Products", href: "/admin/products", key: "products" },
@@ -38,6 +41,10 @@ export default function CustomizationReviewPage() {
   const [requests, setRequests] = useState([]);
   const [selectedRequest, setSelectedRequest] = useState(null);
   const [images, setImages] = useState({});
+  const [negotiation, setNegotiation] = useState(null);
+  const [isNegotiationLoading, setIsNegotiationLoading] = useState(false);
+  const [isSubmittingOffer, setIsSubmittingOffer] = useState(false);
+  const [negotiationError, setNegotiationError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isDetailLoading, setIsDetailLoading] = useState(false);
   const [error, setError] = useState("");
@@ -70,8 +77,11 @@ export default function CustomizationReviewPage() {
 
   async function openDetails(id) {
     setIsDetailLoading(true);
+    setIsNegotiationLoading(true);
     setError("");
+    setNegotiationError("");
     setSelectedRequest(null);
+    setNegotiation(null);
     setImages({});
     try {
       const detail = await getAdminCustomizationRequest(id);
@@ -83,6 +93,24 @@ export default function CustomizationReviewPage() {
       setError(detailError instanceof Error ? detailError.message : "Could not load request details.");
     } finally {
       setIsDetailLoading(false);
+    }
+
+    try {
+      setNegotiation(await getAdminNegotiation(id));
+    } catch (loadError) {
+      setNegotiationError(loadError instanceof Error ? loadError.message : "Could not load offers.");
+    } finally {
+      setIsNegotiationLoading(false);
+    }
+  }
+
+  async function submitOffer(offer) {
+    setIsSubmittingOffer(true);
+    try {
+      await addAdminNegotiationEntry(selectedRequest.id, offer);
+      setNegotiation(await getAdminNegotiation(selectedRequest.id));
+    } finally {
+      setIsSubmittingOffer(false);
     }
   }
 
@@ -233,6 +261,20 @@ export default function CustomizationReviewPage() {
                 </div>
                 <div className="catalogue-form-wide">
                   <p>This is a Pending Order Request. It is not a confirmed Order.</p>
+                </div>
+                <div className="catalogue-form-wide">
+                  {isNegotiationLoading ? (
+                    <p className="catalogue-state" role="status">Loading offers…</p>
+                  ) : (
+                    <NegotiationPanel
+                      negotiation={negotiation}
+                      onSubmit={submitOffer}
+                      isSubmitting={isSubmittingOffer}
+                      error={negotiationError}
+                      admin
+                      idPrefix="admin-negotiation"
+                    />
+                  )}
                 </div>
               </div>
             )}

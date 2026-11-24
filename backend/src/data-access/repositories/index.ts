@@ -193,6 +193,7 @@ function mapCustomizationRequest(request) {
       message: inquiry.message,
       createdAt: inquiry.createdAt,
       customerId: inquiry.customerId,
+      productId: inquiry.productId ?? null,
       customer: inquiry.customer
         ? { id: inquiry.customer.id, displayName: inquiry.customer.displayName }
         : null,
@@ -237,6 +238,60 @@ async function findCustomizationByReferenceImage(imagePath) {
   return customization
     ? { id: customization.id, inquiry: customization.inquiry }
     : null;
+}
+
+function assertNegotiationSchema(prisma) {
+  // The generated Prisma Client is refreshed by the coordinator after the
+  // negotiation migration is applied. Fail clearly until then.
+  if (!prisma.negotiationEntry) {
+    const error = new Error(
+      "Negotiation history is not available in the generated Prisma Client.",
+    );
+    error.status = 503;
+    error.code = "NEGOTIATION_SCHEMA_NOT_AVAILABLE";
+    throw error;
+  }
+}
+
+function mapNegotiationEntry(entry) {
+  if (!entry) return null;
+
+  return {
+    id: entry.id,
+    customizationId: entry.customizationId,
+    proposer: entry.proposer,
+    proposedPrice: entry.proposedPrice,
+    note: entry.note,
+    createdAt: entry.createdAt,
+  };
+}
+
+async function createNegotiationEntry({ customizationId, proposer, proposedPrice, note }) {
+  const prisma = getPrismaClient();
+  assertNegotiationSchema(prisma);
+
+  const entry = await prisma.negotiationEntry.create({
+    data: {
+      customizationId,
+      proposer,
+      proposedPrice,
+      note: note ?? null,
+    },
+  });
+
+  return mapNegotiationEntry(entry);
+}
+
+async function listNegotiationEntries(customizationId) {
+  const prisma = getPrismaClient();
+  assertNegotiationSchema(prisma);
+
+  const entries = await prisma.negotiationEntry.findMany({
+    where: { customizationId },
+    orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+  });
+
+  return entries.map(mapNegotiationEntry);
 }
 
 async function listOrders() {
@@ -734,6 +789,8 @@ const repository = {
   listPendingCustomizationRequests,
   findCustomizationRequestById,
   findCustomizationByReferenceImage,
+  createNegotiationEntry,
+  listNegotiationEntries,
   listOrders,
   upsertOrder,
   findOrderById,

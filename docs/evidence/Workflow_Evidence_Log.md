@@ -344,6 +344,31 @@ _Add new slice entries below._
 - **Integration status:** Implemented locally in the working tree; not committed or pushed. Branch / Pull Request / merge: Direct to main (no branches); commit hash to be added after push.
 - **Evidence link(s):** `docs/evidence/Testing_Evidence_Log.md`; `backend/tests/customization.test.js`.
 
+### C4-M3 — Quotation & Price Negotiation
+
+- **Related PRD requirements:** FR-12, FR-13; plan.md Section 12 (Cycle 4, Member 3); ADR-002, ADR-005.
+- **Owner:** Member 3 (Wareesha Fatima, 25I-3009).
+- **Plan version:** Not supplied in this task.
+- **Branch / Pull Request / merge:** Direct to main (no branches); commit pending — the student will fill in the hash.
+- **HITL / AFK mode:** AFK build by an OpenCode agent in four parts (A schema, B backend, C tests, D frontend), with a short summary after each part. The agent did not run tests; the student ran them.
+- **Reason for mode:** Not supplied in this task.
+- **AI chat/task reference:** OpenCode agent, read-limited prompt — Cycle 4 Member 3, Quotation & Price Negotiation (FR-12, FR-13).
+- **Context supplied to agent:** A read-limited prompt. No migration, `prisma generate`, dependency install, `.env` read, test run, or commit was performed by the agent.
+- **Acceptance criteria:** Not restated in this task; see plan.md Section 12 (Cycle 4, Member 3).
+- **Important iterations/corrections:** Built in four ordered parts (A schema, B backend, C tests, D frontend), one short summary after each part. The agent did not run tests; the student ran them. No migration, `prisma generate`, or dependency install was run.
+- **Rejected/revised approach (if any):** Not supplied in this task.
+- **Files changed (11):** `backend/prisma/schema.prisma`; `backend/src/business-logic/customization/index.js`; `backend/src/data-access/repositories/index.ts`; `backend/src/presentation/controllers/customization.controller.js`; `backend/src/presentation/routes/customization.routes.js`; `backend/tests/negotiation.test.js`; `frontend/src/App.jsx`; `frontend/src/features/customization/CustomizationReviewPage.jsx`; `frontend/src/features/customization/CustomerNegotiationPage.jsx`; `frontend/src/features/customization/NegotiationPanel.jsx`; `frontend/src/services/api.js`.
+- **Team-defined defaults, pending team confirmation (not PRD rules):** (1) quotation response shape `{ standardCataloguePrice, publicPrice }` with `publicPrice` null when no discount is active; (2) discount formula duplicated from the pricing component rather than reused; (3) `REQUEST_NOT_PENDING` returns 409; (4) note capped at 500 characters; (5) no turn-taking — the same party may add consecutive entries; (6) unknown fields and `note: null` rejected.
+- **Open items, Pending:** NegotiationEntry needs a coordinator migration after the Customization and PendingOrderRequest migrations; the team-defined defaults above require team confirmation.
+- **Tests/checks actually run:** Student-run: backend `npm test` — 13 test files / 156 tests passed (21 in `backend/tests/negotiation.test.js`; `backend/tests/customization.test.js` still passes with 22 tests). Frontend `npm run build` succeeded (113 modules). Student manual checks are recorded in `docs/evidence/Testing_Evidence_Log.md`. The agent ran no tests.
+- **Actual results:** Backend 13 test files / 156 tests passed; frontend build succeeded (113 modules). Student manual checks confirmed the ADR-005 Decision 1 schema shape, no PUT/PATCH/DELETE negotiation routes, and no "agreed", "accepted" or "approved" wording in the new frontend files.
+- **Not tested:** Live database persistence is not claimed; NegotiationEntry needs a coordinator migration after the Customization and PendingOrderRequest migrations.
+- **Decision:** Accept / Revise / Reject
+- **Decision reason:** Not supplied in this task.
+- **Major issue/change:** Added the append-only `NegotiationEntry` model and negotiation flow. The agent ran no migration, `prisma generate`, dependency install, or test run; the coordinator migration remains outstanding.
+- **Integration status:** Implemented locally in the working tree; commit pending. Branch / Pull Request / merge: Direct to main (no branches); commit hash to be filled by the student.
+- **Evidence link(s):** `docs/evidence/Testing_Evidence_Log.md`; `backend/tests/negotiation.test.js`.
+
 ### C3-M4 — Payment Management
 
 - **Related PRD requirements:** FR-14, FR-15; ADR-003, ADR-005; plan.md Section 11.

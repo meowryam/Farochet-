@@ -2,8 +2,22 @@ import { z } from "zod";
 
 const MAX_REFERENCE_IMAGES = 5;
 const MAX_REFERENCE_IMAGE_BYTES = 2 * 1024 * 1024;
+const MAX_NEGOTIATION_NOTE_LENGTH = 500;
 
 const customizationIdSchema = z.string().uuid();
+
+// strict() rejects client-supplied proposer, customerId, or any other field;
+// the proposer is derived from the authenticated viewer's role.
+const negotiationInputSchema = z.object({
+  proposedPrice: z.number().refine(
+    (value) => Number.isSafeInteger(value) && value > 0,
+    "Proposed price must be a positive whole amount in PKR.",
+  ),
+  note: z.string()
+    .trim()
+    .max(MAX_NEGOTIATION_NOTE_LENGTH, `Note must be at most ${MAX_NEGOTIATION_NOTE_LENGTH} characters.`)
+    .optional(),
+}).strict();
 const imagePathSchema = z.string().min(1);
 
 const referenceImageSchema = z.object({
@@ -69,6 +83,16 @@ function parseCustomizationId(req, res) {
   return parsed.data;
 }
 
+function parseNegotiationBody(req, res) {
+  const parsed = negotiationInputSchema.safeParse(req.body);
+  if (!parsed.success) {
+    const message = parsed.error.issues.map((issue) => issue.message).join(" ");
+    res.status(400).json({ error: { code: "VALIDATION_ERROR", message } });
+    return null;
+  }
+  return parsed.data;
+}
+
 function parseImagePath(req, res) {
   const parsed = imagePathSchema.safeParse(req.query.path);
   if (!parsed.success) {
@@ -106,6 +130,22 @@ function createCustomizationController(customizationManagement) {
       return res.json({ request });
     },
 
+    getNegotiation: async (req, res) => {
+      const id = parseCustomizationId(req, res);
+      if (!id) return;
+      const negotiation = await customizationManagement.getNegotiation(req.authenticatedUser, id);
+      return res.json(negotiation);
+    },
+
+    addNegotiationEntry: async (req, res) => {
+      const id = parseCustomizationId(req, res);
+      if (!id) return;
+      const input = parseNegotiationBody(req, res);
+      if (!input) return;
+      const entry = await customizationManagement.addNegotiationEntry(req.authenticatedUser, id, input);
+      return res.status(201).json({ entry });
+    },
+
     getImage: async (req, res) => {
       const imagePath = parseImagePath(req, res);
       if (!imagePath) return;
@@ -122,6 +162,7 @@ export {
   createCustomizationController,
   customizationInputSchema,
   referenceImageSchema,
+  negotiationInputSchema,
   customizationIdSchema,
   imagePathSchema,
 };

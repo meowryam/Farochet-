@@ -17,6 +17,8 @@ function createCustomizationRoutes({
   router.use(authenticate, requireRole("CUSTOMER"));
   router.post("/requests", controller.submit);
   router.get("/requests/:id", controller.get);
+  router.get("/requests/:id/negotiation", controller.getNegotiation);
+  router.post("/requests/:id/negotiation", controller.addNegotiationEntry);
   router.get("/images", controller.getImage);
 
   return router;
@@ -36,6 +38,8 @@ function createAdminCustomizationRoutes({
   router.use(authenticate, requireRaazia);
   router.get("/requests", controller.list);
   router.get("/requests/:id", controller.get);
+  router.get("/requests/:id/negotiation", controller.getNegotiation);
+  router.post("/requests/:id/negotiation", controller.addNegotiationEntry);
   router.get("/images", controller.getImage);
 
   return router;

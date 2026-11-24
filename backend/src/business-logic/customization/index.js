@@ -52,6 +52,48 @@ function createCustomizationAndQuotationManagement({
     );
   }
 
+  // Shared by request review and negotiation so both apply the same
+  // authentication and customer-ownership rules.
+  async function readRequestForViewer(viewer, id) {
+    requireViewer(viewer);
+    const request = await dataRepository.findCustomizationRequestById(id);
+    if (!request) throw requestNotFound();
+
+    if (viewer.role === "RAAZIA") return request;
+
+    if (viewer.role === "CUSTOMER") {
+      // Ownership is derived from the persisted Inquiry, never from the
+      // request body, query string, or a client-supplied customer id.
+      const ownerId = request.inquiry?.customerId;
+      if (ownerId && ownerId === viewer.id) return request;
+      throw requestNotFound();
+    }
+
+    throw customizationError(
+      "This operation is not permitted for this account.",
+      403,
+      "FORBIDDEN",
+    );
+  }
+
+  // Read-only quotation reference. No price is created, stored, or written
+  // back to the Product or PublicDiscount records.
+  async function getQuotationReference(request) {
+    const productId = request.inquiry?.productId;
+    if (!productId) return { standardCataloguePrice: null, publicPrice: null };
+
+    const product = await dataRepository.findProductById(productId);
+    if (!product) return { standardCataloguePrice: null, publicPrice: null };
+
+    const standardCataloguePrice = product.basePrice;
+    const discount = await dataRepository.getPublicDiscount();
+    const publicPrice = discount?.active && Number.isSafeInteger(discount.fixedDiscountAmount)
+      ? standardCataloguePrice - discount.fixedDiscountAmount
+      : null;
+
+    return { standardCataloguePrice, publicPrice };
+  }
+
   return {
     recordCustomization: async (viewer, input) => {
       requireViewer(viewer);
@@ -99,26 +141,36 @@ function createCustomizationAndQuotationManagement({
       return dataRepository.listPendingCustomizationRequests();
     },
 
-    getRequestForViewer: async (viewer, id) => {
-      requireViewer(viewer);
-      const request = await dataRepository.findCustomizationRequestById(id);
-      if (!request) throw requestNotFound();
+    getRequestForViewer: readRequestForViewer,
 
-      if (viewer.role === "RAAZIA") return request;
+    getNegotiation: async (viewer, id) => {
+      const request = await readRequestForViewer(viewer, id);
+      const [quotation, entries] = await Promise.all([
+        getQuotationReference(request),
+        dataRepository.listNegotiationEntries(request.customization.id),
+      ]);
+      return { quotation, entries };
+    },
 
-      if (viewer.role === "CUSTOMER") {
-        // Ownership is derived from the persisted Inquiry, never from the
-        // request body, query string, or a client-supplied customer id.
-        const ownerId = request.inquiry?.customerId;
-        if (ownerId && ownerId === viewer.id) return request;
-        throw requestNotFound();
+    addNegotiationEntry: async (viewer, id, input) => {
+      const request = await readRequestForViewer(viewer, id);
+      if (request.status !== "PENDING") {
+        throw customizationError(
+          "Negotiation is only available while the request is pending.",
+          409,
+          "REQUEST_NOT_PENDING",
+        );
       }
 
-      throw customizationError(
-        "This operation is not permitted for this account.",
-        403,
-        "FORBIDDEN",
-      );
+      // Proposer is derived from the signed-in viewer's role. Client-supplied
+      // identity fields are rejected by the controller schema.
+      const proposer = viewer.role === "RAAZIA" ? "RAAZIA" : "CUSTOMER";
+      return dataRepository.createNegotiationEntry({
+        customizationId: request.customization.id,
+        proposer,
+        proposedPrice: input.proposedPrice,
+        note: input.note ?? null,
+      });
     },
 
     getReferenceImageForViewer: async (viewer, imagePath) => {
