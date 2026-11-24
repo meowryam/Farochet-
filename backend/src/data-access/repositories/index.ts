@@ -287,6 +287,33 @@ async function updateOrderPaymentStatus(id, paymentStatus) {
   });
 }
 
+async function updateOrderDelivery(id, data, priceRevision = null) {
+  const prisma = getPrismaClient();
+  if (!priceRevision) {
+    return prisma.order.update({
+      where: { id },
+      data,
+    });
+  }
+  return prisma.$transaction(async (tx) => {
+    const updated = await tx.order.update({
+      where: { id },
+      data,
+    });
+    await tx.orderPriceRevision.create({
+      data: {
+        orderId: id,
+        originalPrice: priceRevision.originalPrice,
+        revisedPrice: priceRevision.revisedPrice,
+        actingUserId: priceRevision.actingUserId,
+        customerAgreed: priceRevision.customerAgreed,
+        reason: priceRevision.reason,
+      },
+    });
+    return updated;
+  });
+}
+
 function wishlistSchemaUnavailable(cause) {
   const error = new Error(
     "Wishlist storage is not initialized. Please contact the administrator to apply the Wishlist database migration.",
@@ -712,6 +739,7 @@ const repository = {
   findOrderById,
   updateOrderManufacturing,
   updateOrderPaymentStatus,
+  updateOrderDelivery,
   addWishlistItem,
   listWishlistItems,
   removeWishlistItem,

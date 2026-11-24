@@ -38,6 +38,37 @@ const paymentStatusSchema = z.object({
   ]),
 }).strict();
 
+const deliveryManagementSchema = z.object({
+  deliveryMethod: z.enum(["Local handover", "Courier/service delivery"]),
+  deliveryFee: z.number().int().nonnegative().nullable().optional(),
+  deliveryTrackingInformation: z.string().trim().max(500).nullable().optional(),
+  deliveryStatus: z.enum(["Delivered"]).nullable().optional(),
+  courierFeeIncrease: z.number().int().nonnegative().optional(),
+  customerAgreed: z.boolean().optional(),
+  revisedApprovedPrice: z.number().int().positive().optional(),
+}).strict().superRefine((value, ctx) => {
+  if (value.deliveryMethod === "Local handover" && value.deliveryFee !== undefined && value.deliveryFee !== 0) {
+    ctx.addIssue({ code: "custom", message: "Local handover deliveryFee must be 0." });
+  }
+  if (
+    value.deliveryMethod === "Courier/service delivery"
+    && (typeof value.deliveryFee !== "number" || !Number.isInteger(value.deliveryFee) || value.deliveryFee < 0)
+  ) {
+    ctx.addIssue({ code: "custom", message: "Courier/service delivery requires a non-negative integer deliveryFee." });
+  }
+  if (value.deliveryMethod === "Local handover" && value.courierFeeIncrease !== undefined) {
+    ctx.addIssue({ code: "custom", message: "Courier fee increases apply only to courier/service delivery." });
+  }
+  if (value.courierFeeIncrease !== undefined && value.courierFeeIncrease >= 200) {
+    if (value.customerAgreed !== true) {
+      ctx.addIssue({ code: "custom", message: "Customer agreement is required for a courier fee increase of PKR 200 or more." });
+    }
+    if (value.revisedApprovedPrice === undefined) {
+      ctx.addIssue({ code: "custom", message: "revisedApprovedPrice is required when customer agreement is recorded." });
+    }
+  }
+});
+
 function createOrderController(orderManagement, statusManagement) {
   return {
     list: async (req, res) => {
@@ -88,6 +119,25 @@ function createOrderController(orderManagement, statusManagement) {
       );
       res.json({ order });
     },
+    updateDelivery: async (req, res) => {
+      const id = parseOrderId(req, res);
+      if (!id) return;
+      const parsed = deliveryManagementSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({
+          error: {
+            code: "VALIDATION_ERROR",
+            message: parsed.error.issues.map((issue) => issue.message).join(" "),
+          },
+        });
+      }
+      const order = await statusManagement.updateDelivery(
+        req.authenticatedUser,
+        id,
+        parsed.data,
+      );
+      res.json({ order });
+    },
   };
 }
 
@@ -96,4 +146,5 @@ export {
   manufacturingProgressSchema,
   orderIdSchema,
   paymentStatusSchema,
+  deliveryManagementSchema,
 };

@@ -14,6 +14,7 @@ import {
   listAdminOrders,
   updateAdminManufacturingProgress,
   updateAdminPaymentStatus,
+  updateAdminDelivery,
 } from "../../services/api";
 
 function formatDate(value) {
@@ -43,6 +44,13 @@ export default function OrderManagementPage() {
   const [manufacturingStatus, setManufacturingStatus] = useState("");
   const [paymentStatus, setPaymentStatus] = useState("");
   const [estimatedCompletionDate, setEstimatedCompletionDate] = useState("");
+  const [deliveryMethod, setDeliveryMethod] = useState("");
+  const [deliveryFee, setDeliveryFee] = useState("");
+  const [deliveryTrackingInformation, setDeliveryTrackingInformation] = useState("");
+  const [deliveryStatus, setDeliveryStatus] = useState("");
+  const [courierFeeIncrease, setCourierFeeIncrease] = useState("");
+  const [customerAgreed, setCustomerAgreed] = useState(false);
+  const [revisedApprovedPrice, setRevisedApprovedPrice] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
@@ -82,6 +90,13 @@ export default function OrderManagementPage() {
       setManufacturingStatus(order.manufacturingStatus);
       setPaymentStatus(order.paymentStatus ?? "");
       setEstimatedCompletionDate(toDateInputValue(order.estimatedCompletionDate));
+      setDeliveryMethod(order.deliveryMethod ?? "");
+      setDeliveryFee(order.deliveryFee == null ? "" : String(order.deliveryFee));
+      setDeliveryTrackingInformation(order.deliveryTrackingInformation ?? "");
+      setDeliveryStatus(order.deliveryStatus ?? "");
+      setCourierFeeIncrease("");
+      setCustomerAgreed(false);
+      setRevisedApprovedPrice("");
     } catch (detailError) {
       setError(detailError instanceof Error ? detailError.message : "Could not load order details.");
     }
@@ -124,6 +139,48 @@ export default function OrderManagementPage() {
       setPaymentStatus(updated.paymentStatus);
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : "Could not update payment status.");
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  async function saveDelivery(event) {
+    event.preventDefault();
+    if (!selectedOrder) return;
+    setIsSaving(true);
+    setError("");
+    try {
+      const payload = {
+        deliveryMethod,
+        deliveryFee: deliveryMethod === "Local handover"
+          ? 0
+          : deliveryFee === "" ? undefined : Number(deliveryFee),
+        deliveryTrackingInformation: deliveryTrackingInformation || null,
+        deliveryStatus: deliveryStatus || null,
+      };
+      if (courierFeeIncrease !== "") {
+        payload.courierFeeIncrease = Number(courierFeeIncrease);
+        if (Number(courierFeeIncrease) >= 200) {
+          payload.customerAgreed = customerAgreed;
+          payload.revisedApprovedPrice = revisedApprovedPrice === ""
+            ? undefined
+            : Number(revisedApprovedPrice);
+        }
+      }
+      const updated = await updateAdminDelivery(selectedOrder.id, payload);
+      setSelectedOrder((current) => ({ ...(current ?? {}), ...updated }));
+      setOrders((current) => current.map((order) => (
+        order.id === updated.id ? { ...order, ...updated } : order
+      )));
+      setDeliveryMethod(updated.deliveryMethod ?? "");
+      setDeliveryFee(updated.deliveryFee == null ? "" : String(updated.deliveryFee));
+      setDeliveryTrackingInformation(updated.deliveryTrackingInformation ?? "");
+      setDeliveryStatus(updated.deliveryStatus ?? "");
+      setCourierFeeIncrease("");
+      setCustomerAgreed(false);
+      setRevisedApprovedPrice("");
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : "Could not update delivery information.");
     } finally {
       setIsSaving(false);
     }
@@ -207,6 +264,9 @@ export default function OrderManagementPage() {
               <div><strong>Manufacturing/order status</strong><p>{selectedOrder.manufacturingStatus}</p></div>
               <div><strong>Payment status</strong><p>{selectedOrder.paymentStatus ?? "Not yet recorded"}</p></div>
               <div><strong>Delivery status</strong><p>{selectedOrder.deliveryStatus ?? "Not yet recorded"}</p></div>
+              <div><strong>Delivery method</strong><p>{selectedOrder.deliveryMethod ?? "Not yet recorded"}</p></div>
+              <div><strong>Delivery fee</strong><p>{selectedOrder.deliveryFee == null ? "Not yet recorded" : formatPrice(selectedOrder.deliveryFee)}</p></div>
+              <div><strong>Tracking/delivery information</strong><p>{selectedOrder.deliveryTrackingInformation ?? "Not yet provided"}</p></div>
               <div><strong>Estimated Completion Date</strong><p>{formatDate(selectedOrder.estimatedCompletionDate)}</p></div>
             </div>
             <form onSubmit={saveManufacturingProgress} className="catalogue-info-fields">
@@ -256,6 +316,77 @@ export default function OrderManagementPage() {
               <div className="catalogue-form-actions">
                 <Button type="submit" admin loading={isSaving} disabled={isSaving}>
                   Save payment status
+                </Button>
+              </div>
+            </form>
+            <form onSubmit={saveDelivery} className="catalogue-info-fields">
+              <SelectField
+                id={`delivery-method-${selectedOrder.id}`}
+                label="Delivery method"
+                value={deliveryMethod}
+                onChange={(event) => setDeliveryMethod(event.target.value)}
+                options={[
+                  { value: "Local handover", label: "Local/in-city handover" },
+                  { value: "Courier/service delivery", label: "Courier/service delivery" },
+                ]}
+                required
+              />
+              <TextField
+                id={`delivery-fee-${selectedOrder.id}`}
+                label="Applicable delivery fee (PKR)"
+                type="number"
+                value={deliveryFee}
+                onChange={(event) => setDeliveryFee(event.target.value)}
+                helpText="Use 0 for local handover."
+              />
+              <TextField
+                id={`delivery-tracking-${selectedOrder.id}`}
+                label="Tracking/delivery information"
+                value={deliveryTrackingInformation}
+                onChange={(event) => setDeliveryTrackingInformation(event.target.value)}
+              />
+              <SelectField
+                id={`delivery-status-${selectedOrder.id}`}
+                label="Delivery status"
+                value={deliveryStatus}
+                onChange={(event) => setDeliveryStatus(event.target.value)}
+                options={[{ value: "Delivered", label: "Delivered" }]}
+                helpText="Leave blank while delivery remains unrecorded."
+              />
+              <TextField
+                id={`courier-fee-increase-${selectedOrder.id}`}
+                label="Pre-dispatch courier fee increase (PKR)"
+                type="number"
+                value={courierFeeIncrease}
+                onChange={(event) => {
+                  setCourierFeeIncrease(event.target.value);
+                  setCustomerAgreed(false);
+                }}
+                helpText="Below 200 is absorbed. 200 or more requires agreement."
+              />
+              {Number(courierFeeIncrease) >= 200 && (
+                <>
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={customerAgreed}
+                      onChange={(event) => setCustomerAgreed(event.target.checked)}
+                    />
+                    {" "}Customer agreed to the revised price
+                  </label>
+                  <TextField
+                    id={`revised-approved-price-${selectedOrder.id}`}
+                    label="Revised Approved Price (PKR)"
+                    type="number"
+                    value={revisedApprovedPrice}
+                    onChange={(event) => setRevisedApprovedPrice(event.target.value)}
+                  />
+                </>
+              )}
+              <p>Delivery updates do not change manufacturing or payment status.</p>
+              <div className="catalogue-form-actions">
+                <Button type="submit" admin loading={isSaving} disabled={isSaving}>
+                  Save delivery information
                 </Button>
               </div>
             </form>

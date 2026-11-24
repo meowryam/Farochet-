@@ -37,6 +37,22 @@ function createMemoryRepository() {
       Object.assign(order, { paymentStatus, updatedAt: new Date() });
       return hydrateOrder(order);
     },
+
+    async updateOrderDelivery(id, data, priceRevision = null) {
+      const order = orders.find((item) => item.id === id);
+      if (!order) return null;
+      Object.assign(order, data, { updatedAt: new Date() });
+      if (priceRevision) {
+        if (!this.priceRevisions) this.priceRevisions = [];
+        this.priceRevisions.push({
+          id: randomUUID(),
+          orderId: id,
+          ...priceRevision,
+          createdAt: new Date(),
+        });
+      }
+      return hydrateOrder(order);
+    },
   };
 
   function hydrateOrder(order) {
@@ -67,6 +83,9 @@ function seedOrder(dataRepository, overrides = {}) {
     manufacturingStatus: "Incomplete",
     paymentStatus: null,
     deliveryStatus: null,
+    deliveryMethod: null,
+    deliveryFee: null,
+    deliveryTrackingInformation: null,
     estimatedCompletionDate: null,
     confirmedAt: new Date(),
     updatedAt: new Date(),
@@ -401,5 +420,239 @@ describe("Confirmed Order ownership and status independence", () => {
     .patch(`/api/admin/orders/${order.id}/status`)
     .send({ manufacturingStatus: "Completed" })
     .expect(403);
+  });
+
+  it("records local handover with zero fee and preserves all other statuses", async () => {
+    const dataRepository = createMemoryRepository();
+    const app = createApp({ dataRepository, authenticate: raaziaSession });
+    const { order } = seedOrder(dataRepository, {
+      order: {
+        manufacturingStatus: "In Progress",
+        paymentStatus: "Partial Payment",
+      },
+    });
+
+    await request(app)
+      .patch(`/api/admin/orders/${order.id}/delivery`)
+      .send({
+        deliveryMethod: "Local handover",
+        deliveryFee: 0,
+        deliveryStatus: null,
+        deliveryTrackingInformation: "Handed over in person",
+      })
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body.order).toMatchObject({
+          deliveryMethod: "Local handover",
+          deliveryFee: 0,
+          deliveryStatus: null,
+          manufacturingStatus: "In Progress",
+          paymentStatus: "Partial Payment",
+        });
+      });
+  });
+
+  it("requires courier fee and rejects a nonzero local handover fee", async () => {
+    const dataRepository = createMemoryRepository();
+    const app = createApp({ dataRepository, authenticate: raaziaSession });
+    const { order } = seedOrder(dataRepository);
+
+    await request(app)
+      .patch(`/api/admin/orders/${order.id}/delivery`)
+      .send({ deliveryMethod: "Courier/service delivery" })
+      .expect(400);
+
+    await request(app)
+      .patch(`/api/admin/orders/${order.id}/delivery`)
+      .send({ deliveryMethod: "Courier/service delivery", deliveryFee: null })
+      .expect(400);
+
+    await request(app)
+      .patch(`/api/admin/orders/${order.id}/delivery`)
+      .send({ deliveryMethod: "Courier/service delivery", deliveryFee: -1 })
+      .expect(400);
+
+    await request(app)
+      .patch(`/api/admin/orders/${order.id}/delivery`)
+      .send({ deliveryMethod: "Courier/service delivery", deliveryFee: 1.5 })
+      .expect(400);
+
+    await request(app)
+      .patch(`/api/admin/orders/${order.id}/delivery`)
+      .send({ deliveryMethod: "Local handover" })
+      .expect(200)
+      .expect(({ body }) => expect(body.order.deliveryFee).toBe(0));
+
+    await request(app)
+      .patch(`/api/admin/orders/${order.id}/delivery`)
+      .send({ deliveryMethod: "Local handover", deliveryFee: 50 })
+      .expect(400);
+
+    await request(app)
+      .patch(`/api/admin/orders/${order.id}/delivery`)
+      .send({
+        deliveryMethod: "Local handover",
+        deliveryFee: 0,
+        courierFeeIncrease: 200,
+      })
+      .expect(400);
+  });
+
+  it("absorbs fee increases below 200 and records no price revision", async () => {
+    const dataRepository = createMemoryRepository();
+    const app = createApp({ dataRepository, authenticate: raaziaSession });
+    const { order } = seedOrder(dataRepository);
+
+    await request(app)
+      .patch(`/api/admin/orders/${order.id}/delivery`)
+      .send({
+        deliveryMethod: "Courier/service delivery",
+        deliveryFee: 500,
+        courierFeeIncrease: 199,
+      })
+      .expect(200)
+      .expect(({ body }) => expect(body.order.approvedPrice).toBe(5000));
+
+    expect(order.approvedPrice).toBe(5000);
+    expect(dataRepository.priceRevisions ?? []).toEqual([]);
+  });
+
+  it("requires agreement and atomically records significant fee price history", async () => {
+    const dataRepository = createMemoryRepository();
+    const app = createApp({ dataRepository, authenticate: raaziaSession });
+    const { order } = seedOrder(dataRepository);
+
+    await request(app)
+      .patch(`/api/admin/orders/${order.id}/delivery`)
+      .send({
+        deliveryMethod: "Courier/service delivery",
+        deliveryFee: 500,
+        courierFeeIncrease: 200,
+        customerAgreed: true,
+        revisedApprovedPrice: 5200,
+        actingUserId: "client-supplied-user",
+      })
+      .expect(400);
+
+    await request(app)
+      .patch(`/api/admin/orders/${order.id}/delivery`)
+      .send({
+        deliveryMethod: "Courier/service delivery",
+        deliveryFee: 500,
+        courierFeeIncrease: 200,
+      })
+      .expect(400);
+
+    await request(app)
+      .patch(`/api/admin/orders/${order.id}/delivery`)
+      .send({
+        deliveryMethod: "Courier/service delivery",
+        deliveryFee: 500,
+        courierFeeIncrease: 200,
+        customerAgreed: true,
+        revisedApprovedPrice: 5200,
+      })
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body.order.approvedPrice).toBe(5200);
+        expect(body.order.deliveryStatus).toBeNull();
+      });
+
+    expect(order.approvedPrice).toBe(5200);
+    expect(dataRepository.priceRevisions).toHaveLength(1);
+    expect(dataRepository.priceRevisions[0]).toMatchObject({
+      orderId: order.id,
+      originalPrice: 5000,
+      revisedPrice: 5200,
+      actingUserId: "raazia-test-user",
+      customerAgreed: true,
+    });
+  });
+
+  it("rejects a significant courier increase on an already Delivered order without mutation", async () => {
+    const dataRepository = createMemoryRepository();
+    const app = createApp({ dataRepository, authenticate: raaziaSession });
+    const { order } = seedOrder(dataRepository, {
+      order: { deliveryStatus: "Delivered" },
+    });
+
+    await request(app)
+      .patch(`/api/admin/orders/${order.id}/delivery`)
+      .send({
+        deliveryMethod: "Courier/service delivery",
+        deliveryFee: 700,
+        courierFeeIncrease: 200,
+        customerAgreed: true,
+        revisedApprovedPrice: 5200,
+      })
+      .expect(400);
+
+    expect(order.approvedPrice).toBe(5000);
+    expect(order.deliveryStatus).toBe("Delivered");
+    expect(dataRepository.priceRevisions ?? []).toEqual([]);
+  });
+
+  it("rejects Delivered status together with a significant courier increase without mutation", async () => {
+    const dataRepository = createMemoryRepository();
+    const app = createApp({ dataRepository, authenticate: raaziaSession });
+    const { order } = seedOrder(dataRepository);
+
+    await request(app)
+      .patch(`/api/admin/orders/${order.id}/delivery`)
+      .send({
+        deliveryMethod: "Courier/service delivery",
+        deliveryFee: 700,
+        courierFeeIncrease: 200,
+        customerAgreed: true,
+        revisedApprovedPrice: 5200,
+        deliveryStatus: "Delivered",
+      })
+      .expect(400);
+
+    expect(order.approvedPrice).toBe(5000);
+    expect(order.deliveryStatus).toBeNull();
+    expect(dataRepository.priceRevisions ?? []).toEqual([]);
+  });
+
+  it("rejects Customer delivery updates and preserves NULL until Delivered", async () => {
+    const dataRepository = createMemoryRepository();
+    const { order } = seedOrder(dataRepository);
+    const customerApp = createApp({
+      dataRepository,
+      authenticate: customerSession(randomUUID()),
+    });
+
+    await request(customerApp)
+      .patch(`/api/admin/orders/${order.id}/delivery`)
+      .send({ deliveryMethod: "Courier/service delivery", deliveryFee: 300 })
+      .expect(403);
+
+    const raaziaApp = createApp({ dataRepository, authenticate: raaziaSession });
+    await request(raaziaApp)
+      .get(`/api/admin/orders/${order.id}`)
+      .expect(200)
+      .expect(({ body }) => expect(body.order.deliveryStatus).toBeNull());
+  });
+
+  it("does not revise Approved Price for a delivery update without a pre-dispatch fee increase", async () => {
+    const dataRepository = createMemoryRepository();
+    const app = createApp({ dataRepository, authenticate: raaziaSession });
+    const { order } = seedOrder(dataRepository);
+
+    await request(app)
+      .patch(`/api/admin/orders/${order.id}/delivery`)
+      .send({
+        deliveryMethod: "Courier/service delivery",
+        deliveryFee: 500,
+        deliveryStatus: "Delivered",
+      })
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body.order.approvedPrice).toBe(5000);
+        expect(body.order.deliveryStatus).toBe("Delivered");
+      });
+
+    expect(order.approvedPrice).toBe(5000);
+    expect(dataRepository.priceRevisions ?? []).toEqual([]);
   });
 });

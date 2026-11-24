@@ -357,6 +357,27 @@ _Add new slice entries below._
 - **Human decision:** Pending Accept / Revise / Reject.
 - **Integration status:** Local working tree only; live database behavior and browser acceptance unverified.
 - **Evidence link(s):** `backend/tests/orders.test.js`; `frontend/src/features/orders/OrderManagementPage.jsx`; `docs/evidence/Testing_Evidence_Log.md`.
+
+### C4-M4 — Delivery Management
+
+- **Related PRD requirements:** FR-14, FR-15; ADR-003, ADR-004, ADR-005 and ADR-006.
+- **Owner:** Member 4.
+- **Plan version:** 2.7 (23 November 2026).
+- **Branch / Pull Request / merge:** `main`; direct commit and push requested; no feature branch or pull request.
+- **HITL / AFK mode:** AFK implementation with automated local verification; live database/browser and human acceptance remain pending.
+- **Reason for mode:** Delivery fields, threshold behavior and UI contracts can be implemented and tested locally, while Supabase migration deployment and shared-browser verification require coordinator/user execution.
+- **AI chat/task reference:** Current Copilot chat — complete Cycle 4 Member 4 delivery contribution audit.
+- **Context supplied to agent:** PRD v1.4 FR-14/FR-15, architecture Status Management and Order responsibilities, accepted ADR-003/ADR-004/ADR-005/ADR-006, plan Cycle 4 Member 4, AGENTS/Guardrails/UI rules and the existing Member 4 payment/manufacturing implementation.
+- **Acceptance criteria:** Raazia records delivery method, fee and tracking information; local handover is fee zero; courier delivery has no invented status; delivery status remains NULL until `Delivered`; the PKR 199/200 threshold is exact; significant increases require customer agreement and a revised Approved Price; approved revisions are audited; delivery updates do not change manufacturing/payment status; no courier API/payment/refund automation is introduced.
+- **Implementation:** Added delivery fields and `OrderPriceRevision` to the Prisma model; added an idempotent migration with data-type/constraint/grant/policy checks; added Raazia-only delivery validation and update behavior in Status Management; added Repository transaction support for significant Approved Price revisions; added the admin PATCH API/UI and customer display. Backend tests cover local handover, courier validation, 199/200 behavior, agreement, status independence and role denial. Frontend component tests cover 199/200 controls, revised-price agreement and local-handover fee.
+- **Rejected/revised approach (if any):** No `PENDING`, `DISPATCHED` or `IN_TRANSIT` delivery status, payment gateway, refund execution, courier booking/API, automatic customer contact or automatic dispatch behavior was introduced.
+- **Tests/checks actually run:** Prisma `validate`; Prisma `format` and subsequent validate; full backend suite with one Vitest thread worker; full frontend suite; frontend production build; `git diff --check`; repository status/diff review.
+- **Actual results:** Prisma schema validation passed after formatting. Backend 12 test files / 135 tests passed. Frontend 9 test files / 32 tests passed. Vite production build passed (111 modules) with the existing >500 kB chunk advisory. The delivery migration was not applied or verified against live Supabase/PostgreSQL.
+- **Human decision:** Pending Accept / Revise / Reject.
+- **Decision reason:** Automated implementation and UI behavior passed locally, but no live migration, authenticated browser workflow or human acceptance was performed.
+- **Major issue/change:** The migration adds delivery fields and an `OrderPriceRevision` table plus runtime grants/policies. It must be coordinator-reviewed and applied before live persistence can be claimed.
+- **Integration status:** Implemented and documented in the working tree; live database/E2E integration remains outstanding until the migration is applied and shared browser verification is performed.
+- **Evidence link(s):** `backend/tests/orders.test.js`; `frontend/src/features/orders/OrderManagementPage.test.jsx`; `backend/prisma/migrations/20261123150000_delivery_management/migration.sql`; `docs/evidence/Testing_Evidence_Log.md`.
 ### Cycle 2 — Member 2 final review and Admin/product follow-up (23 November 2026)
 
 - **Related PRD requirements:** FR-01, FR-02, FR-03, FR-05, FR-07, FR-16; ADR-004 and ADR-006.

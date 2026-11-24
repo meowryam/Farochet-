@@ -23,14 +23,15 @@ enum CustomerRegistrationIntentStatus {
 }
 
 model User {
-  id          String    @id @db.Uuid
-  email       String    @unique
-  displayName String
-  role        UserRole  @default(CUSTOMER)
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
-  inquiries      Inquiry[]
-  wishlistItems WishlistItem[]
+  id                  String               @id @db.Uuid
+  email               String               @unique
+  displayName         String
+  role                UserRole             @default(CUSTOMER)
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  inquiries           Inquiry[]
+  wishlistItems       WishlistItem[]
+  orderPriceRevisions OrderPriceRevision[] @relation("OrderPriceRevisionActingUser")
 }
 
 model CustomerRegistrationIntent {
@@ -49,17 +50,17 @@ model CustomerRegistrationIntent {
 }
 
 model Product {
-  id          String    @id @default(uuid()) @db.Uuid
-  name        String
-  description String?
-  category    String?
-  images      String[]  @default([])
-  basePrice   Int
+  id            String         @id @default(uuid()) @db.Uuid
+  name          String
+  description   String?
+  category      String?
+  images        String[]       @default([])
+  basePrice     Int
   // The positive-price CHECK is enforced by the initial SQL migration.
-  isArchived  Boolean   @default(false)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  inquiries   Inquiry[]
+  isArchived    Boolean        @default(false)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  inquiries     Inquiry[]
   wishlistItems WishlistItem[]
 
   @@index([isArchived, createdAt])
@@ -121,20 +122,39 @@ model PendingOrderRequest {
 }
 
 model Order {
-  id                      String    @id @default(uuid()) @db.Uuid
-  inquiryId               String    @db.Uuid
-  inquiry                 Inquiry   @relation(fields: [inquiryId], references: [id])
-  approvedPrice           Int
-  negotiatedPriceSnapshot Int?
-  manufacturingStatus     String    @default("Incomplete")
-  paymentStatus           String?
-  deliveryStatus          String?
-  estimatedCompletionDate DateTime?
-  confirmedAt             DateTime  @default(now())
-  updatedAt               DateTime  @updatedAt
+  id                          String               @id @default(uuid()) @db.Uuid
+  inquiryId                   String               @db.Uuid
+  inquiry                     Inquiry              @relation(fields: [inquiryId], references: [id])
+  approvedPrice               Int
+  negotiatedPriceSnapshot     Int?
+  manufacturingStatus         String               @default("Incomplete")
+  paymentStatus               String?
+  deliveryStatus              String?
+  deliveryMethod              String?
+  deliveryFee                 Int?
+  deliveryTrackingInformation String?
+  estimatedCompletionDate     DateTime?
+  confirmedAt                 DateTime             @default(now())
+  updatedAt                   DateTime             @updatedAt
+  priceRevisions              OrderPriceRevision[]
 
   @@index([inquiryId, confirmedAt])
   @@index([manufacturingStatus, confirmedAt])
+}
+
+model OrderPriceRevision {
+  id             String   @id @default(uuid()) @db.Uuid
+  orderId        String   @db.Uuid
+  order          Order    @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  originalPrice  Int
+  revisedPrice   Int
+  actingUserId   String   @db.Uuid
+  actingUser     User     @relation("OrderPriceRevisionActingUser", fields: [actingUserId], references: [id], onDelete: Restrict)
+  customerAgreed Boolean
+  reason         String?
+  createdAt      DateTime @default(now())
+
+  @@index([orderId, createdAt])
 }
 
 model WishlistItem {

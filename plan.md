@@ -1,9 +1,9 @@
 # Raazia — Deliverable 4 Implementation Plan
 
-**Plan version:** 2.6
+**Plan version:** 2.7
 **Last updated:** 23 November 2026
-**Status:** The Bootstrap scaffold, Member 2 Cycle 1 Authentication & Role Access, Member 4 confirmed-order code slice, public Customer Product Catalogue Browsing, Member 2 Cycle 4 Wishlist Management, and Member 2 Cycle 2 Customer Inquiry Submission are implemented locally. After integrating the latest `origin/main`, the authenticated Admin drawer exposes all five current sections; its labels, routes, active state, and visibility were verified at desktop and 390px mobile widths. The Admin Inquiry list and detail show the linked customer's name and email with UUID secondary. Product Management keeps two saved records visible while showing public pricing as unavailable. `GET /api/pricing/public` still returns HTTP 500/P2039; backend logs identify PostgreSQL `42501 permission denied for table PublicDiscount`. The Customization Requests page is reachable but its live request load returns HTTP 500 and displays an error alongside zero pending requests; database integration remains unverified. No migration or database record was changed. The combined backend suite passed 127/127, frontend suite 30/30, and production build passed (111 modules; existing chunk-size advisory). Formal human acceptance remains pending; the intended Member 2 commit and push are not yet complete.
-**Previous plan version:** 2.5 is preserved at `docs/plan-history/plan-v16.md`.
+**Status:** The Bootstrap scaffold and the Member 2, Member 3, and Member 4 delivery slices currently represented in the codebase are implemented locally. Member 4 Cycle 3 Payment Management and Cycle 4 Delivery Management are complete as local code slices: delivery method/fee/tracking fields, independent `Delivered` status, the PKR 199/200 threshold, and the significant-increase approved-price revision audit are implemented behind Raazia-only APIs and admin/customer views. The delivery migration `20261123150000_delivery_management` is present but remains not applied and live database/E2E acceptance is not claimed. Cycle 2/3/4 evidence remains separately limited where live database or browser checks were not performed. The combined backend suite passed 135/135, frontend suite passed 32/32, frontend production build passed (111 modules), and Prisma schema validation passed. Formal human acceptance remains pending.
+**Previous plan version:** 2.6 is preserved at `docs/plan-history/plan-v17.md`.
 **Target submission/demo date:** 27 November 2026  
 **Owners:** Members 1–4 share project ownership equally; each owns their assigned vertical slice. There is no separately designated project coordinator.
 
@@ -424,15 +424,17 @@ Cycle dependencies and integration checks are in Sections 9–13.
 
 **Requirements:** FR-14, FR-15; ADR-003 and ADR-005.
 
+**Implementation status:** Implemented locally in the working tree; `backend/prisma/migrations/20261123150000_delivery_management/migration.sql` is ready but not applied. Automated backend/frontend coverage passed; live Supabase migration and browser E2E acceptance remain pending.
+
 **Acceptance criteria:**
-- [ ] Raazia can record delivery method, applicable fee and delivery/tracking information.
-- [ ] For local/in-city handover, no additional delivery fee is charged under the PRD rule.
-- [ ] For courier/service delivery, applicable fee is included in Approved Price before finalization.
-- [ ] Delivery status remains NULL until Raazia records `Delivered`; the UI displays `Not yet recorded` before then.
-- [ ] Do not introduce `PENDING`, `DISPATCHED`, or `IN_TRANSIT` as delivery statuses; dispatch/tracking are separate fields.
-- [ ] A pre-dispatch fee increase below PKR 200 is absorbed by Raazia; PKR 200 or more requires customer notification/agreement before revising Approved Price and dispatch.
-- [ ] Unexpected extra courier charges after handover are absorbed by Raazia.
-- [ ] Delivery updates do not alter manufacturing or payment status; no courier API is integrated.
+- [x] Raazia can record delivery method, applicable fee and delivery/tracking information.
+- [x] For local/in-city handover, no additional delivery fee is charged under the PRD rule.
+- [x] For courier/service delivery, applicable fee is included in Approved Price before finalization.
+- [x] Delivery status remains NULL until Raazia records `Delivered`; the UI displays `Not yet recorded` before then.
+- [x] No `PENDING`, `DISPATCHED`, or `IN_TRANSIT` delivery status was introduced; dispatch/tracking remain separate fields.
+- [x] A pre-dispatch fee increase below PKR 200 is absorbed by Raazia; PKR 200 or more requires customer agreement before revising Approved Price.
+- [x] Significant revisions preserve original/revised price, acting user, agreement and timestamp in `OrderPriceRevision`.
+- [x] Delivery updates do not alter manufacturing or payment status; no courier API is integrated.
 
 **Checks:** local handover fee zero; courier fee; 199/200 PKR threshold; tracking info independent of status; NULL/Delivered state; status independence.
 

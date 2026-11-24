@@ -239,6 +239,18 @@ export default function CustomerOrdersPage() {
                     </dd>
                   </div>
                   <div>
+                    <dt>Delivery method</dt>
+                    <dd>{selectedOrder.deliveryMethod ?? "Not yet recorded"}</dd>
+                  </div>
+                  <div>
+                    <dt>Delivery fee</dt>
+                    <dd>{selectedOrder.deliveryFee == null ? "Not yet recorded" : formatPrice(selectedOrder.deliveryFee)}</dd>
+                  </div>
+                  <div>
+                    <dt>Tracking/delivery information</dt>
+                    <dd>{selectedOrder.deliveryTrackingInformation ?? "Not yet provided"}</dd>
+                  </div>
+                  <div>
                     <dt>Estimated Completion Date</dt>
                     <dd>
                       {formatDate(selectedOrder.estimatedCompletionDate)}

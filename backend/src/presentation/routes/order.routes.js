@@ -23,6 +23,7 @@ function createOrderRoutes({
   adminRouter.get("/:id", controller.get);
   adminRouter.patch("/:id/status", controller.updateManufacturingProgress);
   adminRouter.patch("/:id/payment-status", controller.updatePaymentStatus);
+  adminRouter.patch("/:id/delivery", controller.updateDelivery);
 
   const customerRouter = Router();
   customerRouter.use(authenticateCustomer, requireRole("CUSTOMER"));

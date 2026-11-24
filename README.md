@@ -99,6 +99,12 @@ Customers can create an account at `/register` and sign in at `/sign-in`. Supaba
 
 Protected API requests send a Supabase access token to Express. Middleware verifies it with Supabase Auth, then loads the application role from the persisted `User` profile. The frontend role guards improve navigation only; backend middleware is authoritative.
 
+### Delivery Management (Cycles 3–4 — Member 4)
+
+The Raazia-only delivery API records a confirmed Order's delivery method, applicable fee, tracking/delivery information, and independent `Delivered` state. Local/in-city handover is enforced as a zero fee. Courier/service delivery fees remain separate tracking and pricing data. A pre-dispatch fee increase below PKR 200 is absorbed; an increase of PKR 200 or more requires recorded customer agreement and a revised Approved Price. Significant revisions create an `OrderPriceRevision` audit record with original price, revised price, acting user, customer agreement, reason and timestamp.
+
+The delivery implementation is in Status Management and the centralized Repository. Updating delivery information does not cascade manufacturing or payment status. Delivery status remains nullable until Raazia records `Delivered`; no unapproved dispatch, transit, payment or courier-integration status is created. The database migration is at `backend/prisma/migrations/20261123150000_delivery_management/migration.sql`; application of it and live browser/E2E acceptance remain separately verifiable.
+
 ### Product Catalogue Administration (Cycle 1 — Member 1)
 
 The admin sign-in screen is available at `http://localhost:5174/admin/sign-in`; protected Product and Inquiry pages require a persisted `RAAZIA` profile. Until the User migration is applied and an authorized profile is provisioned, sign-in cannot grant application access. No public admin registration is provided.

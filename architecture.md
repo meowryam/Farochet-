@@ -785,6 +785,12 @@ Ownership and timing:
 -   A revised Approved Price is recorded only after the required
     customer agreement. The system records the business decision; it
     does not automate courier booking or dispatch.
+-   The implementation stores delivery method, fee and tracking
+    information on `Order`, keeps delivery status independent and
+    separate, and records significant courier-increase Approved Price
+    revisions in `OrderPriceRevision`. The delivery migration and this
+    audit are implemented in the working tree; live migration and
+    database/E2E acceptance remain unverified until explicitly run.
 
 #### 5.3.5 Order and status management
 

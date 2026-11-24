@@ -131,6 +131,92 @@ function createStatusManagement({ repository }) {
         updatedAt: updated.updatedAt,
       };
     },
+
+    updateDelivery: async (viewer, orderId, input) => {
+      if (!viewer) {
+        throw statusError("Authentication is required.", 401, "AUTHENTICATION_REQUIRED");
+      }
+      if (viewer.role !== "RAAZIA") {
+        throw statusError("Only Raazia can update delivery information.", 403, "DELIVERY_UPDATE_DENIED");
+      }
+      if (!input || typeof input !== "object" || Array.isArray(input)) {
+        throw statusError("Delivery data is required.", 400, "INVALID_DELIVERY_UPDATE");
+      }
+
+      const order = await repository.findOrderById(orderId);
+      if (!order) {
+        throw statusError("Order was not found.", 404, "ORDER_NOT_FOUND");
+      }
+
+      if (input.deliveryMethod === "Local handover") {
+        input = { ...input, deliveryFee: 0 };
+        if (input.courierFeeIncrease !== undefined) {
+          throw statusError(
+            "Courier fee increases apply only to courier/service delivery.",
+            400,
+            "LOCAL_HANDOVER_COURIER_INCREASE_INVALID",
+          );
+        }
+      }
+
+      let approvedPrice = order.approvedPrice;
+      let significantIncrease = false;
+      if (input.courierFeeIncrease !== undefined) {
+        if (input.courierFeeIncrease < 200) {
+          approvedPrice = order.approvedPrice;
+        } else {
+          if (order.deliveryStatus === "Delivered" || input.deliveryStatus === "Delivered") {
+            throw statusError(
+              "A significant courier fee increase cannot revise an Order that is already delivered or being marked Delivered.",
+              400,
+              "COURIER_INCREASE_AFTER_DELIVERY_DENIED",
+            );
+          }
+          if (input.customerAgreed !== true || input.revisedApprovedPrice === undefined) {
+            throw statusError(
+              "Customer agreement and a revised Approved Price are required for a significant courier fee increase.",
+              400,
+              "SIGNIFICANT_COURIER_INCREASE_AGREEMENT_REQUIRED",
+            );
+          }
+          significantIncrease = true;
+          approvedPrice = input.revisedApprovedPrice;
+        }
+      }
+
+      const data = {
+        deliveryMethod: input.deliveryMethod,
+        deliveryFee: input.deliveryMethod === "Local handover" ? 0 : input.deliveryFee,
+        deliveryTrackingInformation: input.deliveryTrackingInformation ?? null,
+      };
+      if (significantIncrease) {
+        data.approvedPrice = approvedPrice;
+      }
+      if (Object.prototype.hasOwnProperty.call(input, "deliveryStatus")) {
+        data.deliveryStatus = input.deliveryStatus ?? null;
+      }
+
+      const updated = await repository.updateOrderDelivery(orderId, data, significantIncrease
+        ? {
+            originalPrice: order.approvedPrice,
+            revisedPrice: approvedPrice,
+            actingUserId: viewer.id,
+            customerAgreed: true,
+            reason: "Courier fee increase",
+          }
+        : null);
+      return {
+        id: updated.id,
+        manufacturingStatus: updated.manufacturingStatus,
+        paymentStatus: updated.paymentStatus,
+        deliveryStatus: updated.deliveryStatus,
+        deliveryMethod: updated.deliveryMethod ?? null,
+        deliveryFee: updated.deliveryFee ?? null,
+        deliveryTrackingInformation: updated.deliveryTrackingInformation ?? null,
+        approvedPrice: updated.approvedPrice,
+        updatedAt: updated.updatedAt,
+      };
+    },
   };
 }
 
