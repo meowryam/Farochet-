@@ -766,6 +766,29 @@ async function upsertAvailability(information) {
   });
 }
 
+/**
+ * List Orders whose confirmedAt falls within the given UTC date range, inclusive.
+ * Returns only the fields required by Sales Summary (FR-18).
+ * No authorization decision is made here — the caller (Order Management) is responsible.
+ */
+async function listOrdersForDateRange({ confirmedAtStart, confirmedAtEnd }) {
+  return getPrismaClient().order.findMany({
+    where: {
+      confirmedAt: {
+        gte: confirmedAtStart,
+        lte: confirmedAtEnd,
+      },
+    },
+    select: {
+      id: true,
+      approvedPrice: true,
+      manufacturingStatus: true,
+      confirmedAt: true,
+    },
+    orderBy: [{ confirmedAt: "asc" }, { id: "asc" }],
+  });
+}
+
 async function seedProducts(products) {
   const prisma = getPrismaClient();
 
@@ -807,6 +830,7 @@ const repository = {
   createNegotiationEntry,
   listNegotiationEntries,
   listOrders,
+  listOrdersForDateRange,
   upsertOrder,
   findOrderById,
   updateOrderManufacturing,

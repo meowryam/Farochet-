@@ -74,6 +74,31 @@ function createOrderManagement({ repository }) {
       }
       return toOrderView(order);
     },
+
+    /**
+     * List orders filtered by confirmedAt date range for Sales Summary.
+     * Only Raazia may call this. Returns minimal view objects needed by FR-18.
+     *
+     * @param {object} viewer - Must be RAAZIA.
+     * @param {{ confirmedAtStart: Date, confirmedAtEnd: Date }} range
+     * @returns {Promise<Array<{ id, approvedPrice, manufacturingStatus, confirmedAt }>>}
+     */
+    listOrdersForSalesSummary: async (viewer, { confirmedAtStart, confirmedAtEnd }) => {
+      if (!viewer || viewer.role !== "RAAZIA") {
+        throw orderError(
+          "Only Raazia can retrieve order data for the sales summary.",
+          403,
+          "SALES_SUMMARY_ACCESS_DENIED",
+        );
+      }
+      const orders = await repository.listOrdersForDateRange({ confirmedAtStart, confirmedAtEnd });
+      return orders.map((order) => ({
+        id: order.id,
+        approvedPrice: order.approvedPrice,
+        manufacturingStatus: order.manufacturingStatus ?? "Incomplete",
+        confirmedAt: order.confirmedAt,
+      }));
+    },
   };
 }
 

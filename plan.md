@@ -460,13 +460,13 @@ The completed criteria above are recorded from the user's 24 November completion
 **Requirement:** FR-18.
 
 **Acceptance criteria:**
-- [ ] Raazia can select an inclusive start/end date range interpreted in PKT.
-- [ ] Filter uses Order confirmation date, not Inquiry, payment, manufacturing or delivery date.
-- [ ] Confirmed count includes all Orders confirmed within the range, even if later cancelled.
-- [ ] Cancelled count includes subsequently cancelled Orders from that same confirmed set.
-- [ ] Total Approved Price sums only confirmed non-cancelled Orders in the selected range.
-- [ ] Label is `Total Approved Price (Order Value)` and never `Payments Received`.
-- [ ] PendingOrderRequests are excluded.
+- [x] Raazia can select an inclusive start/end date range interpreted in PKT.
+- [x] Filter uses Order confirmation date, not Inquiry, payment, manufacturing or delivery date.
+- [x] Confirmed count includes all Orders confirmed within the range, even if later cancelled.
+- [x] Cancelled count includes subsequently cancelled Orders from that same confirmed set.
+- [x] Total Approved Price sums only confirmed non-cancelled Orders in the selected range.
+- [x] Label is `Total Approved Price (Order Value)` and never `Payments Received`.
+- [x] PendingOrderRequests are excluded.
 
 **Checks:** start/end boundary inclusivity; PKT boundary conversion; cancelled Order counted in confirmed and cancelled counts but excluded from total; pending request excluded; zero-result range.
 

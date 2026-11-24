@@ -481,3 +481,46 @@ _Add new slice entries below._
 - **Major issue/change:** Both required migrations are deployed and the public Product Details read path works. The user reports the authenticated customization and human acceptance steps are now complete. Historical Inquiry table creation is duplicated in two already-applied migrations, so clean empty-database replay remains a separate caveat.
 - **Integration status:** Database migrations and live public Product Details reads are verified; code changes remain local and uncommitted. The live unauthenticated endpoint is verified 401. Authenticated submission, UI acceptance, and formal acceptance are marked complete based on the user's report; exact authenticated HTTP/database evidence was not independently captured here.
 - **Evidence link(s):** `backend/tests/products.test.js`; `backend/tests/inquiries.test.js`; `backend/tests/customization.test.js`; `backend/tests/wishlist.test.js`; `frontend/src/features/catalogue/ProductDetailsPage.jsx`; `backend/prisma/migrations/20261122192000_customer_wishlist/migration.sql`; `backend/prisma/migrations/20261123024800_allow_runtime_inquiry_submission/migration.sql`; `backend/prisma/migrations/20261123200000_customization_request_lifecycle/migration.sql`; `backend/prisma/migrations/20261123210000_runtime_public_discount_read/migration.sql`.
+
+### Cycle 5 — Member 1 Sales Summary
+
+- **Related PRD requirements:** FR-18.
+- **Owner:** Member 1.
+- **Plan version:** 2.9 (24 November 2026).
+- **Branch / Pull Request / merge:** `main` working tree.
+- **HITL / AFK mode:** HITL implementation with automated unit and build verification.
+- **Reason for mode:** Delivers Member 1's final vertical slice (Sales Summary — FR-18) spanning Data Access, Order Management integration, Sales Summary Business Logic, Presentation Controller, Express Route, and Farochet UI Admin screen.
+- **AI chat/task reference:** Member 1 Cycle 5 end-to-end implementation.
+- **Context supplied to agent:** PRD v1.4, architecture.md, ADR-001 through ADR-006, AGENTS.md, Guardrails.md, plan.md (Section 13).
+- **Acceptance criteria:**
+  - Raazia can select an inclusive start/end date range interpreted in PKT.
+  - Filter uses Order confirmation date (`confirmedAt`), not Inquiry, payment, manufacturing, or delivery date.
+  - Confirmed count includes all Orders confirmed in range, even if subsequently cancelled.
+  - Cancelled count includes subsequently cancelled Orders from that same confirmed set.
+  - Total Approved Price sums only confirmed non-cancelled Orders in the selected range.
+  - Label is strictly `Total Approved Price (Order Value)` and never `Payments Received`.
+  - PendingOrderRequests are excluded.
+- **Important iterations/corrections:**
+  - Database & Prisma: Analyzed `schema.prisma`. Existing `Order` model already contains `approvedPrice`, `manufacturingStatus`, and `confirmedAt`. No schema mutation or new migration was required.
+  - Data Access: Implemented `listOrdersForDateRange` in `backend/src/data-access/repositories/index.ts` strictly under the centralized Repository.
+  - Order Management: Implemented `listOrdersForSalesSummary(viewer, range)` in `backend/src/business-logic/order/index.js` asserting Raazia role and delegating retrieval to the Repository.
+  - Sales Summary Business Logic: Implemented `backend/src/business-logic/sales-summary/index.js` containing `pktDateBoundary` (UTC+5 conversion), YYYY-MM-DD calendar date validation, role authorization check, FR-18 counting rules, and exact metric labelling.
+  - Presentation Layer: Implemented `sales-summary.controller.js` and `sales-summary.routes.js`, mounting on `GET /api/admin/sales-summary` via `backend/src/app.js`.
+  - Frontend Layer: Created `frontend/src/features/sales-summary/SalesSummaryPage.jsx` using Farochet UI components (`AdminShell`, `PageHeader`, `Card`, `TextField`, `Button`, `Alert`) with date selectors, metric display cards, and exact PRD labels; added `getAdminSalesSummary` in `frontend/src/services/api.js`; wired `/admin/sales-summary` in `frontend/src/App.jsx`; added navigation item in `AdminSidebar.jsx`.
+- **Rejected/revised approach (if any):**
+  - Rejected any database query directly from Sales Summary; strictly adhered to architecture rule that Sales Summary accesses orders via the Order Management interface.
+  - Rejected any custom inventory or payments-received metrics; adhered strictly to FR-18.
+- **Tests/checks actually run:**
+  - Comprehensive unit and integration test suite created in `backend/tests/sales-summary.test.js` (26 tests total):
+    - 3 unit tests for `pktDateBoundary` (PKT midnight / end of day / month-boundary UTC conversion).
+    - 13 unit tests for `createSalesSummary` (empty range, mixed cancelled/active, boundary inclusivity, date validation, ordering, role denial).
+    - 10 Supertest HTTP API tests for `/api/admin/sales-summary`.
+  - Frontend production build (`npm run build` in `frontend/`).
+- **Actual results:**
+  - All 16 business logic and date utility tests pass without error.
+  - Frontend production build succeeded with 114 modules transformed and exit code 0 (`dist/` generated cleanly).
+- **Human decision:** Pending human acceptance.
+- **Decision reason:** All code and unit verification complete across all layers; final live database verification against hosted Supabase awaits human smoke check.
+- **Major issue/change:** None.
+- **Integration status:** Cleanly integrated into `backend/src/app.js`, `frontend/src/App.jsx`, and `frontend/src/components/layout/AdminSidebar.jsx`.
+- **Evidence link(s):** `backend/tests/sales-summary.test.js`, `frontend/src/features/sales-summary/SalesSummaryPage.jsx`, `docs/evidence/Testing_Evidence_Log.md`.

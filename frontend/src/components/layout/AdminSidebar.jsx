@@ -7,6 +7,7 @@ export const ADMIN_NAV_ITEMS = [
   { label: "Customer Inquiries", href: "/admin/inquiries", key: "inquiries" },
   { label: "Customization Requests", href: "/admin/customization-requests", key: "requests" },
   { label: "Confirmed Orders", href: "/admin/orders", key: "orders" },
+  { label: "Sales Summary", href: "/admin/sales-summary", key: "sales-summary" },
 ];
 
 export default function AdminSidebar({

@@ -10,6 +10,7 @@ import statusManagement, { createStatusManagement } from "./business-logic/statu
 import pricingAndDiscountManagement from "./business-logic/pricing/index.js";
 import { createPricingAndDiscountManagement } from "./business-logic/pricing/index.js";
 import wishlistManagement, { createWishlistManagement } from "./business-logic/wishlist/index.js";
+import { createSalesSummary } from "./business-logic/sales-summary/index.js";
 import {
   authenticateRequest,
   createSupabaseIdentityVerification,
@@ -25,6 +26,7 @@ import {
 import { createWishlistRoutes } from "./presentation/routes/wishlist.routes.js";
 import { createOrderRoutes } from "./presentation/routes/order.routes.js";
 import { createAvailabilityRoutes } from "./presentation/routes/availability.routes.js";
+import { createSalesSummaryRoutes } from "./presentation/routes/sales-summary.routes.js";
 import {
   createAdminPricingRouter,
   createPublicPricingRouter,
@@ -41,6 +43,7 @@ export function createApp({
   orderManagement: orderManagementOverride,
   availabilityManagement: availabilityManagementOverride,
   wishlistManagement: wishlistManagementOverride,
+  salesSummary: salesSummaryOverride,
   imageStorage = createInMemoryImageStorage(),
   authenticate = authenticateRequest,
   authenticateCustomer = authenticate,
@@ -86,6 +89,7 @@ export function createApp({
       ? wishlistManagement
       : createWishlistManagement({ repository: dataRepository, productManagement: products })
   );
+  const summary = salesSummaryOverride ?? createSalesSummary({ orderManagement: orders });
   const orderRoutes = createOrderRoutes({
     orderManagement: orders,
     statusManagement: statuses,
@@ -176,6 +180,11 @@ export function createApp({
   );
   app.use("/api/customer/orders", orderRoutes.customerRouter);
   app.use("/api/orders", orderRoutes.customerRouter);
+
+  app.use(
+    "/api/admin/sales-summary",
+    createSalesSummaryRoutes({ salesSummary: summary, authenticate }),
+  );
 
   app.use(notFoundHandler);
   app.use(errorHandler);

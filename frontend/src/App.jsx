@@ -19,6 +19,7 @@ import CustomerCataloguePage from "./features/catalogue/CustomerCataloguePage";
 import CustomerWishlistPage from "./features/wishlist/CustomerWishlistPage";
 import CustomerInquiryPage from "./features/inquiries/CustomerInquiryPage";
 import ProductDetailsPage from "./features/catalogue/ProductDetailsPage";
+import SalesSummaryPage from "./features/sales-summary/SalesSummaryPage";
 
 export default function App() {
   return (
@@ -52,6 +53,10 @@ export default function App() {
           <Route
             path="/admin/orders"
             element={<RequireAuth roles={["RAAZIA"]}><OrderManagementPage /></RequireAuth>}
+          />
+          <Route
+            path="/admin/sales-summary"
+            element={<RequireAuth roles={["RAAZIA"]}><SalesSummaryPage /></RequireAuth>}
           />
           <Route
             path="/customization/request"

@@ -334,6 +334,18 @@ export function getMyOrder(id, token = getCustomerAccessToken()) {
   }).then((data) => data.order);
 }
 
+/**
+ * Get the FR-18 sales summary from the admin API.
+ *
+ * @param {string} startDate - Inclusive start date YYYY-MM-DD (PKT).
+ * @param {string} endDate   - Inclusive end date YYYY-MM-DD (PKT).
+ * @returns {Promise<SalesSummaryResult>}
+ */
+export function getAdminSalesSummary(startDate, endDate) {
+  const params = new URLSearchParams({ startDate, endDate });
+  return request(`/admin/sales-summary?${params.toString()}`).then((data) => data.summary);
+}
+
 export {
   API_BASE_URL,
   clearCustomerAccessToken,
