@@ -1,9 +1,9 @@
 # Raazia — Deliverable 4 Implementation Plan
 
-**Plan version:** 2.9
-**Last updated:** 24 November 2026
-**Status:** The Bootstrap scaffold, Member 2 Cycle 1 Authentication & Role Access, Member 4 confirmed-order code slice, public Customer Product Catalogue Browsing, Member 2 Wishlist Management and Inquiry Submission, and Member 1 Cycle 4 Product Details are implemented locally. The Admin drawer and Inquiry identity were previously verified at desktop/mobile sizes. Member 1's `20261123200000_customization_request_lifecycle` and the narrowly scoped `20261123210000_runtime_public_discount_read` migrations are applied to the shared database: all 12 migrations are up to date, Prisma reports no schema difference, and the runtime grants/RLS policies are verified. A rollback-only runtime transaction verified Inquiry → Customization → PendingOrderRequest without persisting test rows. Live `/api/health`, `/api/pricing/public`, `/api/products`, and `/api/products/:id` return HTTP 200; Product Details exposes only public prices and passes the effective-price check. The backend suite passed 135/135, and the frontend production build passed 113 modules. On 24 November 2026, the user reported Member 1 Cycle 4 complete, including the authenticated customization HTTP submission, human UI acceptance, and formal acceptance. The shared browser snapshot remained signed out, and exact response codes, record IDs, and test counts for the reported live submission were not provided; this completion is recorded as user-reported, not independently reverified by this assistant.
-**Previous plan version:** 2.8 is preserved in this plan history; v2.7 is recorded below; v2.6 is preserved in local Git commit `2e192b2`; the older v2.5 is preserved at `docs/plan-history/plan-v16.md`.
+**Plan version:** 2.7
+**Last updated:** 23 November 2026
+**Status:** The Bootstrap scaffold, Member 2 Cycle 1 Authentication & Role Access, Member 4 confirmed-order code slice, public Customer Product Catalogue Browsing, Member 2 Wishlist Management and Inquiry Submission, and Member 1 Cycle 4 Product Details are implemented locally. The Admin drawer and Inquiry identity were previously verified at desktop/mobile sizes. Member 1's `20261123200000_customization_request_lifecycle` and the narrowly scoped `20261123210000_runtime_public_discount_read` migrations are applied to the shared database: all 12 migrations are up to date, Prisma reports no schema difference, and the runtime grants/RLS policies are verified. A rollback-only runtime transaction verified Inquiry → Customization → PendingOrderRequest without persisting test rows. Live `/api/health`, `/api/pricing/public`, `/api/products`, and `/api/products/:id` return HTTP 200; Product Details exposes only public prices and passes the effective-price check. Member 4 Cycle 3 Payment Management and Cycle 4 Delivery Management are complete as local code slices. The combined backend suite passed 135/135, frontend suite passed, and the production build passed (113 modules).
+**Previous plan version:** 2.6 is preserved in local Git commit `2e192b2`; the older v2.5 is preserved at `docs/plan-history/plan-v16.md`.
 **Target submission/demo date:** 27 November 2026  
 **Owners:** Members 1–4 share project ownership equally; each owns their assigned vertical slice. There is no separately designated project coordinator.
 
@@ -382,19 +382,11 @@ Cycle dependencies and integration checks are in Sections 9–13.
 
 **Requirements:** FR-01, FR-05, FR-09, FR-16.
 
-**Implementation and verification status (24 November 2026):**
-- [x] Live authenticated Customer customization HTTP submission — user reports complete; exact HTTP status codes and persisted record IDs were not supplied or independently observed.
-- [x] Human UI acceptance of product details, inquiry, customization and wishlist flows — user reports complete.
-- [x] Formal human acceptance of Member 1 Cycle 4 — user reports Cycle 4 complete; recorded as Accept.
-- [x] Local implementation, public pricing read, unauthenticated customization rejection, automated backend regression, frontend production build, and browser-level unauthenticated UI smoke verified.
-
 **Acceptance criteria:**
-- [x] Customer can open one product's full images, description, category and Standard Catalogue Price/public sale price.
-- [x] Inquiry action opens/submits an Inquiry through the agreed API.
-- [x] Custom-order action begins the Customization workflow without bypassing its Inquiry relationship.
-- [x] Wishlist action is available only through the authenticated customer workflow.
-
-The completed criteria above are recorded from the user's 24 November completion report; detailed authenticated response codes, record IDs, and step-by-step UI results were not included and were not independently observed in the shared browser.
+- [ ] Customer can open one product's full images, description, category and Standard Catalogue Price/public sale price.
+- [ ] Inquiry action opens/submits an Inquiry through the agreed API.
+- [ ] Custom-order action begins the Customization workflow without bypassing its Inquiry relationship.
+- [ ] Wishlist action is available only through the authenticated customer workflow.
 
 **Checks:** unknown Product; optional image; pricing display; links/actions lead to the correct API flow.
 
@@ -432,15 +424,17 @@ The completed criteria above are recorded from the user's 24 November completion
 
 **Requirements:** FR-14, FR-15; ADR-003 and ADR-005.
 
+**Implementation status:** Implemented locally in the working tree; `backend/prisma/migrations/20261123150000_delivery_management/migration.sql` is ready but not applied. Automated backend/frontend coverage passed; live Supabase migration and browser E2E acceptance remain pending.
+
 **Acceptance criteria:**
-- [ ] Raazia can record delivery method, applicable fee and delivery/tracking information.
-- [ ] For local/in-city handover, no additional delivery fee is charged under the PRD rule.
-- [ ] For courier/service delivery, applicable fee is included in Approved Price before finalization.
-- [ ] Delivery status remains NULL until Raazia records `Delivered`; the UI displays `Not yet recorded` before then.
-- [ ] Do not introduce `PENDING`, `DISPATCHED`, or `IN_TRANSIT` as delivery statuses; dispatch/tracking are separate fields.
-- [ ] A pre-dispatch fee increase below PKR 200 is absorbed by Raazia; PKR 200 or more requires customer notification/agreement before revising Approved Price and dispatch.
-- [ ] Unexpected extra courier charges after handover are absorbed by Raazia.
-- [ ] Delivery updates do not alter manufacturing or payment status; no courier API is integrated.
+- [x] Raazia can record delivery method, applicable fee and delivery/tracking information.
+- [x] For local/in-city handover, no additional delivery fee is charged under the PRD rule.
+- [x] For courier/service delivery, applicable fee is included in Approved Price before finalization.
+- [x] Delivery status remains NULL until Raazia records `Delivered`; the UI displays `Not yet recorded` before then.
+- [x] No `PENDING`, `DISPATCHED`, or `IN_TRANSIT` delivery status was introduced; dispatch/tracking remain separate fields.
+- [x] A pre-dispatch fee increase below PKR 200 is absorbed by Raazia; PKR 200 or more requires customer agreement before revising Approved Price.
+- [x] Significant revisions preserve original/revised price, acting user, agreement and timestamp in `OrderPriceRevision`.
+- [x] Delivery updates do not alter manufacturing or payment status; no courier API is integrated.
 
 **Checks:** local handover fee zero; courier fee; 199/200 PKR threshold; tracking info independent of status; NULL/Delivered state; status independence.
 
@@ -460,13 +454,13 @@ The completed criteria above are recorded from the user's 24 November completion
 **Requirement:** FR-18.
 
 **Acceptance criteria:**
-- [x] Raazia can select an inclusive start/end date range interpreted in PKT.
-- [x] Filter uses Order confirmation date, not Inquiry, payment, manufacturing or delivery date.
-- [x] Confirmed count includes all Orders confirmed within the range, even if later cancelled.
-- [x] Cancelled count includes subsequently cancelled Orders from that same confirmed set.
-- [x] Total Approved Price sums only confirmed non-cancelled Orders in the selected range.
-- [x] Label is `Total Approved Price (Order Value)` and never `Payments Received`.
-- [x] PendingOrderRequests are excluded.
+- [ ] Raazia can select an inclusive start/end date range interpreted in PKT.
+- [ ] Filter uses Order confirmation date, not Inquiry, payment, manufacturing or delivery date.
+- [ ] Confirmed count includes all Orders confirmed within the range, even if later cancelled.
+- [ ] Cancelled count includes subsequently cancelled Orders from that same confirmed set.
+- [ ] Total Approved Price sums only confirmed non-cancelled Orders in the selected range.
+- [ ] Label is `Total Approved Price (Order Value)` and never `Payments Received`.
+- [ ] PendingOrderRequests are excluded.
 
 **Checks:** start/end boundary inclusivity; PKT boundary conversion; cancelled Order counted in confirmed and cancelled counts but excluded from total; pending request excluded; zero-result range.
 
@@ -642,7 +636,4 @@ Group Contribution Log records each member's slice implementation, AI interactio
 | v2.4 (active) | 23 Nov 2026 | Records the existing User-profile projection, automated verification, browser authentication limitation, and current suite/build results; inquiry remains Cycle 2 and human acceptance remains pending. |
 | `plan-v16.md` (v2.5) | 23 Nov 2026 | Preserves the active v2.5 plan before integrating the latest Member 3/4 Cycle 3 changes and verifying the combined Member 2 work. |
 | v2.6 (active) | 23 Nov 2026 | Records the five-route Admin drawer after remote integration, authenticated Admin Inquiry identity, independent Product Management pricing failure state, combined test/build results, and remaining live API/database blockers. |
-| v2.7 (active) | 23 Nov 2026 | Records Member 1 Cycle 4 merge-conflict reconciliation, the two deployed migrations, runtime privilege/transaction verification, live public Product Details success, and the remaining authenticated Customer-write and human-acceptance gaps. |
-| v2.8 (active) | 24 Nov 2026 | Records live unauthenticated customization 401 verification, invalid Supabase Admin credential blocking disposable authenticated setup, final 135/135 backend tests and 113-module frontend build, and a ready human UI acceptance checklist. |
-| v2.9 (active) | 24 Nov 2026 | Records the user's report that Member 1 Cycle 4 authenticated customization submission, human UI acceptance, and formal acceptance are complete; exact live HTTP evidence was not supplied or independently reverified. |
 | v2.7 (active) | 23 Nov 2026 | Records Member 1 Cycle 4 merge-conflict reconciliation, the two deployed migrations, runtime privilege/transaction verification, live public Product Details success, and the remaining authenticated Customer-write and human-acceptance gaps. |
