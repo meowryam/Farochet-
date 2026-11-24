@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import Alert from "../../components/ui/Alert";
 import Button from "../../components/ui/Button";
 import Card from "../../components/ui/Card";
@@ -12,7 +12,6 @@ import PageHeader from "../../components/layout/PageHeader";
 import CrochetFlower from "../../components/brand/CrochetFlower";
 import { useAuth } from "../../contexts/AuthContext";
 import {
-  getMyInquiry,
   listMyInquiries,
   listProducts,
   submitCustomerInquiry,
@@ -33,31 +32,49 @@ export default function CustomerInquiryPage() {
   const productId = searchParams.get("productId") || "";
   const [products, setProducts] = useState([]);
   const [inquiries, setInquiries] = useState([]);
-  const [selectedInquiry, setSelectedInquiry] = useState(null);
-  const [detailError, setDetailError] = useState("");
-  const [isDetailLoading, setIsDetailLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [historyError, setHistoryError] = useState("");
+  const [productError, setProductError] = useState("");
   const [validationError, setValidationError] = useState("");
   const [success, setSuccess] = useState("");
   const [isLoading, setIsLoading] = useState(true);
+  const [historyLoaded, setHistoryLoaded] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   const loadPage = useCallback(async () => {
     setIsLoading(true);
     setError("");
-    try {
-      const [catalogue, history] = await Promise.all([
-        listProducts(),
-        listMyInquiries(session?.access_token),
-      ]);
-      setProducts(catalogue);
-      setInquiries(history);
-    } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : "Could not load your inquiries.");
-    } finally {
-      setIsLoading(false);
+    const [catalogueResult, historyResult] = await Promise.allSettled([
+      listProducts(),
+      listMyInquiries(session?.access_token),
+    ]);
+
+    if (catalogueResult.status === "fulfilled") {
+      setProducts(catalogueResult.value);
+      setProductError("");
+    } else {
+      setProductError(
+        catalogueResult.reason instanceof Error
+          ? catalogueResult.reason.message
+          : "Could not load catalogue products.",
+      );
     }
+
+    if (historyResult.status === "fulfilled") {
+      setInquiries(historyResult.value);
+      setHistoryLoaded(true);
+      setHistoryError("");
+    } else {
+      setHistoryLoaded(false);
+      setHistoryError(
+        historyResult.reason instanceof Error
+          ? historyResult.reason.message
+          : "Could not load your inquiries.",
+      );
+    }
+
+    setIsLoading(false);
   }, [session?.access_token]);
 
   useEffect(() => {
@@ -87,7 +104,12 @@ export default function CustomerInquiryPage() {
       }, session?.access_token);
       setSuccess(`Inquiry submitted${inquiry.id ? ` — reference ${inquiry.id}` : "."}`);
       setMessage("");
-      setInquiries((current) => [inquiry, ...current]);
+      setInquiries((current) => [
+        inquiry,
+        ...current.filter((savedInquiry) => savedInquiry.id !== inquiry.id),
+      ]);
+      setHistoryLoaded(true);
+      setHistoryError("");
     } catch (submissionError) {
       setError(submissionError instanceof Error ? submissionError.message : "Could not submit your inquiry.");
     } finally {
@@ -97,34 +119,22 @@ export default function CustomerInquiryPage() {
 
   const selectedProduct = products.find((product) => product.id === productId);
 
-  async function viewInquiry(id) {
-    setDetailError("");
-    setSelectedInquiry(null);
-    setIsDetailLoading(true);
-    try {
-      setSelectedInquiry(await getMyInquiry(id, session?.access_token));
-    } catch (detailLoadError) {
-      setDetailError(
-        detailLoadError instanceof Error
-          ? detailLoadError.message
-          : "Could not load inquiry details.",
-      );
-    } finally {
-      setIsDetailLoading(false);
-    }
-  }
-
   return (
-    <CustomerShell>
+    <CustomerShell headerProps={{ currentPath: "/inquiries" }}>
       <ContentContainer className="customization-request-page">
         <PageHeader
           eyebrow="Customer"
-          title="Submit an inquiry"
-          description="Ask Raazia about product details, price, availability or customization."
+          title="My inquiries"
+          description="Review your inquiry history or ask Raazia about a product, price, availability or customization."
           action={<a className="faro-button faro-button--outline faro-button--sm" href="/catalogue">Back to catalogue</a>}
         />
 
         {error && <Alert tone="error" title="Action could not be completed">{error}</Alert>}
+        {productError && (
+          <Alert tone="error" title="Catalogue products could not be loaded">
+            {productError}
+          </Alert>
+        )}
         {success && <Alert tone="success" title="Inquiry submitted">{success}</Alert>}
 
         {selectedProduct && (
@@ -133,8 +143,8 @@ export default function CustomerInquiryPage() {
           </Alert>
         )}
 
-        <Card title="Your inquiry" description="The inquiry is retained separately and does not create an order.">
-          <form onSubmit={handleSubmit} className="faro-form">
+        <Card title="Submit an inquiry" description="Your inquiry is retained separately and does not create an order.">
+          <form id="inquiry-form" onSubmit={handleSubmit} className="faro-form">
             {productId && !selectedProduct && !isLoading && (
               <TextField
                 id="selectedProduct"
@@ -161,14 +171,36 @@ export default function CustomerInquiryPage() {
         <Card
           title="My inquiries"
           description={isLoading ? "Loading your inquiries…" : `${inquiries.length} saved ${inquiries.length === 1 ? "inquiry" : "inquiries"}`}
+          action={
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => void loadPage()}
+              loading={isLoading}
+            >
+              Refresh
+            </Button>
+          }
         >
           {isLoading ? (
             <p className="catalogue-state" role="status">Loading your inquiries…</p>
+          ) : historyError && !historyLoaded ? (
+            <div>
+              <p role="alert">
+                Your inquiry history could not be loaded. {historyError}
+              </p>
+              <Button variant="outline" onClick={() => void loadPage()}>Try again</Button>
+            </div>
           ) : inquiries.length === 0 ? (
             <EmptyState
               title="No inquiries yet"
               description="Submit an inquiry above to save it to your inquiry history."
               illustration={<CrochetFlower size={64} />}
+              action={
+                <Link className="faro-button faro-button--outline" to="/inquiries#inquiry-form">
+                  Submit an inquiry
+                </Link>
+              }
             />
           ) : (
             <div className="inquiry-history-list">
@@ -180,42 +212,19 @@ export default function CustomerInquiryPage() {
                   </div>
                   <p>{inquiry.message}</p>
                   <div className="inquiry-history-item__actions">
-                    <small>{inquiry.id}</small>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => void viewInquiry(inquiry.id)}
-                      loading={isDetailLoading}
+                    <small>Reference {inquiry.id}</small>
+                    <Link
+                      className="faro-button faro-button--outline faro-button--sm"
+                      to={`/inquiries/${encodeURIComponent(inquiry.id)}`}
                     >
                       View Details
-                    </Button>
+                    </Link>
                   </div>
                 </article>
               ))}
             </div>
           )}
         </Card>
-
-        {detailError && <Alert tone="error" title="Inquiry details could not be loaded">{detailError}</Alert>}
-        {isDetailLoading && <p className="catalogue-state" role="status">Loading inquiry details…</p>}
-        {selectedInquiry && (
-          <Card title="Inquiry details" description={selectedInquiry.id}>
-            <dl className="inquiry-detail-fields">
-              <div>
-                <dt>Submitted</dt>
-                <dd>{formatDate(selectedInquiry.createdAt)}</dd>
-              </div>
-              <div>
-                <dt>Related product</dt>
-                <dd>{selectedInquiry.productName ?? "No linked product"}</dd>
-              </div>
-              <div>
-                <dt>Original inquiry</dt>
-                <dd>{selectedInquiry.message}</dd>
-              </div>
-            </dl>
-          </Card>
-        )}
       </ContentContainer>
     </CustomerShell>
   );

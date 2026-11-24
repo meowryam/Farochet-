@@ -379,7 +379,7 @@ describe("Customer inquiry submission", () => {
       .expect(401);
 
     const history = await request(customerApp)
-      .get("/api/customer/inquiries")
+      .get(`/api/customer/inquiries?customerId=${randomUUID()}`)
       .expect(200);
     expect(history.body.inquiries).toHaveLength(1);
     expect(history.body.inquiries[0].customerId).toBe(customerId);
@@ -396,5 +396,16 @@ describe("Customer inquiry submission", () => {
       .expect(200);
     expect(ownedDetail.body.inquiry).not.toHaveProperty("customerName");
     expect(ownedDetail.body.inquiry).not.toHaveProperty("customerEmail");
+  });
+
+  it("rejects unauthenticated customer inquiry history and detail requests", async () => {
+    const unauthenticatedApp = createApp({ dataRepository });
+
+    await request(unauthenticatedApp)
+      .get("/api/customer/inquiries")
+      .expect(401);
+    await request(unauthenticatedApp)
+      .get(`/api/customer/inquiries/${randomUUID()}`)
+      .expect(401);
   });
 });

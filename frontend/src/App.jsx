@@ -18,8 +18,10 @@ import AuthCallbackPage from "./pages/AuthCallbackPage";
 import CustomerCataloguePage from "./features/catalogue/CustomerCataloguePage";
 import CustomerWishlistPage from "./features/wishlist/CustomerWishlistPage";
 import CustomerInquiryPage from "./features/inquiries/CustomerInquiryPage";
+
 import ProductDetailsPage from "./features/catalogue/ProductDetailsPage";
 import SalesSummaryPage from "./features/sales-summary/SalesSummaryPage";
+import CustomerInquiryDetailsPage from "./features/inquiries/CustomerInquiryDetailsPage";
 
 export default function App() {
   return (
@@ -86,6 +88,10 @@ export default function App() {
           <Route
             path="/inquiries"
             element={<RequireAuth roles={["CUSTOMER"]}><CustomerInquiryPage /></RequireAuth>}
+          />
+          <Route
+            path="/inquiries/:id"
+            element={<RequireAuth roles={["CUSTOMER"]}><CustomerInquiryDetailsPage /></RequireAuth>}
           />
           <Route path="*" element={<BootstrapStatusPage />} />
         </Routes>

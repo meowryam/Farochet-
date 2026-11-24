@@ -440,6 +440,7 @@ _Add new slice entries below._
 - **Major issue/change:** The repository still reports a rebase in progress with `REBASE_HEAD` pointing to the existing Wishlist commit, although that commit is already in remote history. `git rebase --quit` could not remove `.git/rebase-merge` because of its deny-delete ACL. No rebase continuation, commit, push, ACL change, or destructive Git action was performed. The re-applied Member 2 work remains staged, and the original work remains in `stash@{0}`.
 - **Integration status:** No Member 2 commit or push; must clear the stale Git operation metadata before committing safely.
 - **Evidence link(s):** `frontend/src/components/layout/AdminShell.test.jsx`; `frontend/src/components/layout/AdminSidebar.test.jsx`; `frontend/src/features/catalogue/ProductManagementPage.test.jsx`; `frontend/src/features/inquiries/InquiryManagementPage.test.jsx`; `docs/evidence/Testing_Evidence_Log.md`.
+
 ### Cycle 4 — Member 1 Product Details
 
 - **Related PRD requirements:** FR-01, FR-05, FR-09, FR-16; ADR-001 through ADR-006.
@@ -524,3 +525,17 @@ _Add new slice entries below._
 - **Major issue/change:** None.
 - **Integration status:** Cleanly integrated into `backend/src/app.js`, `frontend/src/App.jsx`, and `frontend/src/components/layout/AdminSidebar.jsx`.
 - **Evidence link(s):** `backend/tests/sales-summary.test.js`, `frontend/src/features/sales-summary/SalesSummaryPage.jsx`, `docs/evidence/Testing_Evidence_Log.md`.
+
+
+## 24 Nov 2026 — Cycle 5 Member 2: Customer Inquiry History
+
+- **HITL / AFK mode:** HITL; implementation requested and reviewed in the current user-directed session.
+- **Task reference:** Current Copilot chat — Cycle 5 Member 2 Customer Inquiry History.
+- **Requirements and guardrails:** Cycle 5 Member 2 in `plan.md` v2.6; FR-06 and FR-08; centralized authentication and Business Logic ownership under ADR-004; UI C-07/C-08. The schema has no Inquiry status field, so no status was invented.
+- **Implementation:** Reused the protected customer inquiry list/detail API and authenticated session token; added an authenticated URL-addressable inquiry detail route, a back link to history, independent catalogue/history load errors, refresh/retry and explicit loading/empty states, and duplicate-safe insertion of a successful submission into the visible history. Confirmed-order history and Admin inquiry behavior were left intact. No schema, migration, or database record changed.
+- **Iterations and checks:** The first full frontend run found an ambiguous test selector for the two “My inquiries” headings. The assertion was narrowed to the page-level heading and the full suite then passed. Backend full suite 128/128; frontend full suite 35/35; production build passed (112 modules; existing chunk-size advisory); inquiry-focused backend 17/17 and frontend 12/12; `git diff --check` and `git diff --cached --check` passed.
+- **Not verified:** No authenticated customer browser session was shared, so live browser console/network verification was not performed. Backend tests use the in-memory Repository; live PostgreSQL persistence and migration state were not changed or tested.
+- **Human decision:** Formal Accept / Revise / Reject remains pending.
+- **Integration:** Direct-to-`main` commit/push is subject to final staged-file review and confirmation that local `main` and `origin/main` match; no force-push or history rewrite.
+- **Plan version:** `plan.md` v2.6; not changed for this focused implementation.
+- **Evidence files:** `backend/tests/inquiries.test.js`; `frontend/src/features/inquiries/CustomerInquiryPage.test.jsx`; `docs/evidence/Testing_Evidence_Log.md`.

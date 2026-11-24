@@ -1,8 +1,9 @@
 import "@testing-library/jest-dom/vitest";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, Route, Routes } from "react-router-dom";
 import CustomerInquiryPage from "./CustomerInquiryPage";
+import CustomerInquiryDetailsPage from "./CustomerInquiryDetailsPage";
 
 vi.mock("../../contexts/AuthContext", () => ({
   useAuth: vi.fn(),
@@ -39,7 +40,10 @@ afterEach(() => cleanup());
 function renderPage(initialEntry = "/inquiries") {
   return render(
     <MemoryRouter initialEntries={[initialEntry]}>
-      <CustomerInquiryPage />
+      <Routes>
+        <Route path="/inquiries" element={<CustomerInquiryPage />} />
+        <Route path="/inquiries/:id" element={<CustomerInquiryDetailsPage />} />
+      </Routes>
     </MemoryRouter>,
   );
 }
@@ -69,6 +73,7 @@ describe("CustomerInquiryPage", () => {
       }, "customer-token");
     });
     expect(await screen.findByText("Inquiry submitted")).toBeInTheDocument();
+    expect(screen.getAllByText("Do you make custom bouquets?")).toHaveLength(1);
   });
 
   it("shows validation for an empty message", async () => {
@@ -159,27 +164,116 @@ describe("CustomerInquiryPage", () => {
     expect(await screen.findByText("Inquiry submitted")).toBeInTheDocument();
   });
 
-  it("loads the selected inquiry's details through the owned-detail API", async () => {
+  it("navigates to inquiry details and back through the owned-detail API", async () => {
     listMyInquiries.mockResolvedValue([{
       id: "inquiry-a",
       message: "Is this available in lavender?",
-      productName: "Crochet rose",
+      productName: null,
       createdAt: "2026-11-22T10:00:00.000Z",
     }]);
     getMyInquiry.mockResolvedValue({
       id: "inquiry-a",
       customerId: "customer-a",
       message: "Is this available in lavender?",
-      productName: "Crochet rose",
+      productName: null,
       createdAt: "2026-11-22T10:00:00.000Z",
     });
 
     renderPage();
     await screen.findByText("Is this available in lavender?");
-    fireEvent.click(screen.getByRole("button", { name: "View Details" }));
+    expect(screen.getByText("Reference inquiry-a")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("link", { name: "View Details" }));
 
     expect(await screen.findByRole("heading", { name: "Inquiry details" })).toBeInTheDocument();
     expect(getMyInquiry).toHaveBeenCalledWith("inquiry-a", "customer-token");
-    expect(screen.getAllByText("Crochet rose")).toHaveLength(2);
+    expect(screen.getByText("Reference inquiry-a")).toBeInTheDocument();
+    expect(screen.getByText("No linked product")).toBeInTheDocument();
+    expect(screen.getByText("Is this available in lavender?")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("link", { name: "Back to my inquiries" }));
+    expect(await screen.findByRole("heading", { name: "My inquiries", level: 1 })).toBeInTheDocument();
+    expect(await screen.findByText("Is this available in lavender?")).toBeInTheDocument();
+  });
+
+  it("shows a linked product in inquiry details", async () => {
+    getMyInquiry.mockResolvedValue({
+      id: "inquiry-linked",
+      message: "Is this available in lavender?",
+      productName: "Crochet rose",
+      createdAt: "2026-11-22T10:00:00.000Z",
+    });
+
+    renderPage("/inquiries/inquiry-linked");
+
+    expect(await screen.findByText("Crochet rose")).toBeInTheDocument();
+    expect(screen.getByText("Is this available in lavender?")).toBeInTheDocument();
+  });
+
+  it("shows history loading and does not show a false empty state", async () => {
+    let resolveHistory;
+    listMyInquiries.mockReturnValue(new Promise((resolve) => {
+      resolveHistory = resolve;
+    }));
+
+    renderPage();
+
+    expect(screen.getByRole("status")).toHaveTextContent("Loading your inquiries");
+    expect(screen.queryByRole("heading", { name: "No inquiries yet" })).not.toBeInTheDocument();
+
+    await act(async () => resolveHistory([]));
+    expect(await screen.findByRole("heading", { name: "No inquiries yet" })).toBeInTheDocument();
+  });
+
+  it("shows history failure and allows retry without presenting it as empty", async () => {
+    listMyInquiries
+      .mockRejectedValueOnce(new Error("Inquiry service unavailable."))
+      .mockResolvedValueOnce([{
+        id: "inquiry-retry",
+        message: "Please advise.",
+        productName: null,
+        createdAt: "2026-11-22T10:00:00.000Z",
+      }]);
+
+    renderPage();
+
+    expect(await screen.findByText("Your inquiry history could not be loaded. Inquiry service unavailable."))
+      .toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "No inquiries yet" })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(await screen.findByText("Please advise.")).toBeInTheDocument();
+  });
+
+  it("keeps inquiry history available when catalogue loading fails", async () => {
+    listProducts.mockRejectedValue(new Error("Catalogue service unavailable."));
+    listMyInquiries.mockResolvedValue([{
+      id: "inquiry-history",
+      message: "Please advise.",
+      productName: null,
+      createdAt: "2026-11-22T10:00:00.000Z",
+    }]);
+
+    renderPage();
+
+    expect(await screen.findByText("Please advise.")).toBeInTheDocument();
+    expect(screen.getByText("Catalogue service unavailable.")).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "No inquiries yet" })).not.toBeInTheDocument();
+  });
+
+  it("shows inquiry detail loading and retries a failed detail request", async () => {
+    getMyInquiry
+      .mockRejectedValueOnce(new Error("Inquiry service unavailable."))
+      .mockResolvedValueOnce({
+        id: "inquiry-retry",
+        message: "Please advise.",
+        productName: null,
+        createdAt: "2026-11-22T10:00:00.000Z",
+      });
+
+    renderPage("/inquiries/inquiry-retry");
+
+    expect(screen.getByRole("status")).toHaveTextContent("Loading inquiry details");
+    expect(await screen.findByText("Inquiry service unavailable.")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(await screen.findByText("Please advise.")).toBeInTheDocument();
   });
 });
