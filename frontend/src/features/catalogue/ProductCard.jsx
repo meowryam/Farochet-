@@ -1,22 +1,8 @@
 import { useState } from "react";
-<<<<<<< HEAD
 import IconButton from "../../components/ui/IconButton";
 import HeartIcon from "../../components/ui/HeartIcon";
-
-function imageSource(reference) {
-  if (typeof reference !== "string") return null;
-  if (reference.startsWith("/") && !reference.startsWith("//")) return reference;
-  try {
-    const url = new URL(reference);
-    return url.protocol === "https:" || url.protocol === "http:" ? url.href : null;
-  } catch {
-    return null;
-  }
-}
-=======
 import { Link } from "react-router-dom";
 import { productImageSource } from "./productImageSource";
->>>>>>> 9a9ecf1 (c4m1)
 
 function formatPrice(amount) {
   return `PKR ${new Intl.NumberFormat("en-PK").format(amount)}`;
@@ -25,6 +11,7 @@ function formatPrice(amount) {
 export default function ProductCard({ product, wishlistAction, inquiryAction }) {
   const [imageFailed, setImageFailed] = useState(false);
   const source = product.images?.map(productImageSource).find(Boolean);
+  const standardCataloguePrice = product.standardCataloguePrice ?? product.basePrice;
 
   return (
     <article className="catalogue-public-card">
@@ -66,7 +53,7 @@ export default function ProductCard({ product, wishlistAction, inquiryAction }) 
         {product.description && <p className="catalogue-public-card__description">{product.description}</p>}
         <div className="catalogue-public-card__price">
           <span>Standard Catalogue Price</span>
-          <strong>{formatPrice(product.standardCataloguePrice)}</strong>
+          <strong>{formatPrice(standardCataloguePrice)}</strong>
           {product.fixedDiscountAmount != null && (
             <>
               <span className="catalogue-public-card__sale">Public sale</span>

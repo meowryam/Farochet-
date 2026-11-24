@@ -136,13 +136,6 @@ export function getPublicProduct(id) {
   });
 }
 
-export function submitCustomerInquiry(inquiry) {
-  return request("/customer/inquiries", {
-    method: "POST",
-    body: JSON.stringify(inquiry),
-  }).then((data) => data.inquiry);
-}
-
 export function getWishlistProductStatus(productId) {
   return request(`/customer/wishlist/${encodeURIComponent(productId)}`);
 }

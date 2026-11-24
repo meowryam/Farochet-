@@ -110,31 +110,17 @@ async function upsertInquiry(id, data) {
   });
 }
 
-async function createInquiry(data) {
-  return getPrismaClient().inquiry.create({ data });
-}
-
 async function findWishlistItem(customerId, productId) {
-  return getPrismaClient().wishlistItem.findUnique({
-    where: { customerId_productId: { customerId, productId } },
-    select: { id: true },
-  });
-}
+  const prisma = getPrismaClient();
+  if (!prisma.wishlistItem) throw wishlistSchemaUnavailable();
 
-async function addWishlistItem(customerId, productId) {
   try {
-    return await getPrismaClient().wishlistItem.create({
-      data: { customerId, productId },
-      select: { id: true, customerId: true, productId: true, createdAt: true },
+    return await prisma.wishlistItem.findUnique({
+      where: { customerId_productId: { customerId, productId } },
+      select: { id: true },
     });
   } catch (error) {
-    if (error?.code !== "P2002") throw error;
-    const existing = await getPrismaClient().wishlistItem.findUnique({
-      where: { customerId_productId: { customerId, productId } },
-      select: { id: true, customerId: true, productId: true, createdAt: true },
-    });
-    if (!existing) throw error;
-    return existing;
+    throw mapWishlistStorageError(error);
   }
 }
 
@@ -813,9 +799,7 @@ const repository = {
   createInquiry,
   listInquiriesByCustomer,
   upsertInquiry,
-  createInquiry,
   findWishlistItem,
-  addWishlistItem,
   createCustomizationRequest,
   listPendingCustomizationRequests,
   findCustomizationRequestById,

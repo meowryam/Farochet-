@@ -16,12 +16,9 @@ import CustomerRegistrationPage from "./pages/CustomerRegistrationPage";
 import SignInPage from "./pages/SignInPage";
 import AuthCallbackPage from "./pages/AuthCallbackPage";
 import CustomerCataloguePage from "./features/catalogue/CustomerCataloguePage";
-<<<<<<< HEAD
 import CustomerWishlistPage from "./features/wishlist/CustomerWishlistPage";
 import CustomerInquiryPage from "./features/inquiries/CustomerInquiryPage";
-=======
 import ProductDetailsPage from "./features/catalogue/ProductDetailsPage";
->>>>>>> 9a9ecf1 (c4m1)
 
 export default function App() {
   return (

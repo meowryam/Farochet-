@@ -218,9 +218,9 @@ describe("Inquiry Review & Management API", () => {
         expect(body.inquiry).toMatchObject({
           id: expect.any(String),
           productId: product.id,
+          customerId: "customer-test-user",
           message: "Could you share more details?",
         });
-        expect(body.inquiry).not.toHaveProperty("customerId");
       });
     expect(dataRepository.inquiries).toHaveLength(1);
     expect(dataRepository.inquiries[0].customerId).toBe("customer-test-user");

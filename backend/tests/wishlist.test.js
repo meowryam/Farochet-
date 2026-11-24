@@ -3,29 +3,44 @@ import { beforeEach, describe, expect, it } from "vitest";
 import request from "supertest";
 import { createApp } from "../src/app.js";
 
-<<<<<<< HEAD
+const CUSTOMER_A = "11111111-1111-4111-8111-111111111111";
+const CUSTOMER_B = "22222222-2222-4222-8222-222222222222";
+const PRODUCT = {
+  name: "Crochet flower",
+  description: "Handmade crochet flower.",
+  category: "Decor",
+  images: ["/images/crochet-flower.jpg"],
+  basePrice: 1250,
+};
+
 function createMemoryRepository() {
   const products = [];
   const wishlistItems = [];
+  const items = wishlistItems;
 
   return {
     products,
+    items,
     wishlistItems,
     async findProductById(id) {
       return products.find((product) => product.id === id) ?? null;
     },
-    async addWishlistItem({ customerId, productId }) {
-      const existing = wishlistItems.find(
+    async listProducts({ includeArchived = false } = {}) {
+      return products.filter((product) => includeArchived || !product.isArchived);
+    },
+    async getPublicDiscount() {
+      return null;
+    },
+    async findWishlistItem(customerId, productId) {
+      return wishlistItems.find(
         (item) => item.customerId === customerId && item.productId === productId,
-      );
+      ) ?? null;
+    },
+    async addWishlistItem({ customerId, productId }) {
+      const existing = await this.findWishlistItem(customerId, productId);
       if (existing) return { item: existing, created: false };
 
-      const item = {
-        id: randomUUID(),
-        customerId,
-        productId,
-        createdAt: new Date(),
-      };
+      const item = { id: randomUUID(), customerId, productId, createdAt: new Date() };
       wishlistItems.push(item);
       return { item, created: true };
     },
@@ -42,64 +57,17 @@ function createMemoryRepository() {
       if (index < 0) return false;
       wishlistItems.splice(index, 1);
       return true;
-=======
-const CUSTOMER_A = "11111111-1111-4111-8111-111111111111";
-const CUSTOMER_B = "22222222-2222-4222-8222-222222222222";
-
-function createMemoryRepository() {
-  const products = [];
-  const items = [];
-
-  return {
-    products,
-    items,
-    async findProductById(id) {
-      return products.find((product) => product.id === id) ?? null;
-    },
-    async listProducts({ includeArchived = false } = {}) {
-      return products.filter((product) => includeArchived || !product.isArchived);
-    },
-    async getPublicDiscount() {
-      return null;
-    },
-    async findWishlistItem(customerId, productId) {
-      return items.find((item) => item.customerId === customerId && item.productId === productId) ?? null;
-    },
-    async addWishlistItem(customerId, productId) {
-      let item = await this.findWishlistItem(customerId, productId);
-      if (!item) {
-        item = { id: randomUUID(), customerId, productId, createdAt: new Date() };
-        items.push(item);
-      }
-      return item;
->>>>>>> 9a9ecf1 (c4m1)
     },
   };
 }
 
-<<<<<<< HEAD
-const CUSTOMER_A = randomUUID();
-const CUSTOMER_B = randomUUID();
-const PRODUCT = {
-  name: "Crochet flower",
-  description: "Handmade crochet flower.",
-  category: "Decor",
-  images: ["/images/crochet-flower.jpg"],
-  basePrice: 1250,
-};
-
-function customerSession(id) {
-  return function authenticateCustomer(req, _res, next) {
-=======
 function customerSession(id) {
   return (req, _res, next) => {
->>>>>>> 9a9ecf1 (c4m1)
     req.authenticatedUser = { id, role: "CUSTOMER" };
     next();
   };
 }
 
-<<<<<<< HEAD
 function raaziaSession(req, _res, next) {
   req.authenticatedUser = { id: randomUUID(), role: "RAAZIA" };
   next();
@@ -288,7 +256,9 @@ describe("Customer Wishlist API", () => {
     await request(raaziaApp)
       .get("/api/customer/wishlist")
       .expect(403);
-=======
+  });
+});
+
 describe("Product detail wishlist actions (FR-16)", () => {
   let dataRepository;
   let product;
@@ -349,6 +319,5 @@ describe("Product detail wishlist actions (FR-16)", () => {
     product.isArchived = true;
     await request(customer).put(`/api/customer/wishlist/${product.id}`).expect(404);
     expect(dataRepository.items).toHaveLength(0);
->>>>>>> 9a9ecf1 (c4m1)
   });
 });

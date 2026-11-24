@@ -13,9 +13,9 @@ function createMemoryRepository() {
   const inquiries = [];
   const customizations = [];
   const pendingOrderRequests = [];
-<<<<<<< HEAD
   const users = new Map();
   const orders = [];
+  const products = [];
 
   function decorate(request) {
     const customization = customizations.find((item) => item.id === request.customizationId) ?? null;
@@ -37,28 +37,25 @@ function createMemoryRepository() {
       } : null,
     };
   }
-=======
-  const products = [];
->>>>>>> 9a9ecf1 (c4m1)
-
   return {
     inquiries,
     customizations,
     pendingOrderRequests,
-<<<<<<< HEAD
     users,
     orders,
-=======
     products,
 
     async findProductById(id) {
       return products.find((product) => product.id === id) ?? null;
     },
 
+    async listProducts({ includeArchived = false } = {}) {
+      return products.filter((product) => includeArchived || !product.isArchived);
+    },
+
     async getPublicDiscount() {
       return null;
     },
->>>>>>> 9a9ecf1 (c4m1)
 
     async createCustomizationRequest({ inquiry, customization }) {
       const createdInquiry = { id: randomUUID(), createdAt: new Date(), ...inquiry };

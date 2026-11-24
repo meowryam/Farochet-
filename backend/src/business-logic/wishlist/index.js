@@ -8,7 +8,6 @@ function wishlistError(message, status, code) {
   return error;
 }
 
-<<<<<<< HEAD
 function requireCustomer(user) {
   if (!user || user.role !== "CUSTOMER" || typeof user.id !== "string" || !user.id) {
     throw wishlistError(
@@ -38,20 +37,22 @@ function createWishlistManagement({
     throw new Error("Wishlist Management requires the centralized Repository and Product Management.");
   }
 
-  return {
-    addWishlistItem: async (customer, productId) => {
-      requireCustomer(customer);
-      const product = await products.getCatalogueProduct(productId);
-      const result = await dataRepository.addWishlistItem({
-        customerId: customer.id,
-        productId: product.id,
-      });
+  async function saveWishlistItem(customer, productId) {
+    requireCustomer(customer);
+    const product = await products.getCatalogueProduct(productId);
+    const result = await dataRepository.addWishlistItem({
+      customerId: customer.id,
+      productId: product.id,
+    });
 
-      return {
-        item: { product: toWishlistProduct(product), createdAt: result.item.createdAt },
-        created: result.created,
-      };
-    },
+    return {
+      item: { product: toWishlistProduct(product), createdAt: result.item.createdAt },
+      created: result.created,
+    };
+  }
+
+  return {
+    addWishlistItem: saveWishlistItem,
 
     listWishlistItems: async (customer) => {
       requireCustomer(customer);
@@ -82,34 +83,19 @@ function createWishlistManagement({
           "WISHLIST_ITEM_NOT_FOUND",
         );
       }
-=======
-function createWishlistManagement({ repository, productManagement }) {
-  if (!repository || !productManagement) {
-    throw new Error("Wishlist Management requires the centralized Repository and Product Management.");
-  }
+      return { removed: true };
+    },
 
-  async function assertCustomerAndListedProduct(viewer, productId) {
-    if (!viewer) {
-      throw wishlistError("Authentication is required.", 401, "AUTHENTICATION_REQUIRED");
-    }
-    if (viewer.role !== "CUSTOMER") {
-      throw wishlistError("This operation is not permitted for this account.", 403, "FORBIDDEN");
-    }
-    await productManagement.getCatalogueProduct(productId);
-  }
-
-  return {
-    isProductSaved: async (viewer, productId) => {
-      await assertCustomerAndListedProduct(viewer, productId);
-      const item = await repository.findWishlistItem(viewer.id, productId);
+    isProductSaved: async (customer, productId) => {
+      requireCustomer(customer);
+      await products.getCatalogueProduct(productId);
+      const item = await dataRepository.findWishlistItem(customer.id, productId);
       return { productId, saved: Boolean(item) };
     },
 
-    addWishlistItem: async (viewer, productId) => {
-      await assertCustomerAndListedProduct(viewer, productId);
-      await repository.addWishlistItem(viewer.id, productId);
+    addProduct: async (customer, productId) => {
+      await saveWishlistItem(customer, productId);
       return { productId, saved: true };
->>>>>>> 9a9ecf1 (c4m1)
     },
   };
 }

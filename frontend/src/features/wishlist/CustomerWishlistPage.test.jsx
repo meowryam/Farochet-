@@ -232,17 +232,19 @@ describe("CustomerCataloguePage wishlist integration", () => {
   it("keeps the Wishlist heart click from triggering an enclosing product action", () => {
     const onProductAction = vi.fn();
     render(
-      <div onClick={onProductAction}>
-        <ProductCard
-          product={wishlistItem("product-a").product}
-          wishlistAction={{
-            label: "Add to Wishlist",
-            saved: false,
-            loading: false,
-            onClick: vi.fn(),
-          }}
-        />
-      </div>,
+      <MemoryRouter>
+        <div onClick={onProductAction}>
+          <ProductCard
+            product={wishlistItem("product-a").product}
+            wishlistAction={{
+              label: "Add to Wishlist",
+              saved: false,
+              loading: false,
+              onClick: vi.fn(),
+            }}
+          />
+        </div>
+      </MemoryRouter>,
     );
 
     fireEvent.click(screen.getByRole("button", { name: "Add to Wishlist" }));

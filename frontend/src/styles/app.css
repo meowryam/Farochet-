@@ -263,7 +263,6 @@
   font-size: 18px;
 }
 
-<<<<<<< HEAD
 .catalogue-public-card__wishlist-action {
   position: absolute;
   top: var(--space-3);
@@ -328,7 +327,8 @@
 
 .customer-wishlist-page {
   padding-block: var(--space-10) var(--space-16);
-=======
+}
+
 .catalogue-public-card__sale {
   width: fit-content;
   border-radius: var(--radius-pill);
@@ -336,7 +336,6 @@
   color: var(--color-cocoa);
   background: var(--color-buttercream);
   font-weight: 700;
->>>>>>> 9a9ecf1 (c4m1)
 }
 
 .catalogue-public-state {
