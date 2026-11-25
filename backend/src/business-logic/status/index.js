@@ -90,6 +90,38 @@ function createStatusManagement({ repository }) {
         throw statusError("Order was not found.", 404, "ORDER_NOT_FOUND");
       }
 
+      if (
+        order.specificationChangeRecordedAt
+        && !order.specificationChangeResolvedAt
+        && data.manufacturingStatus
+        && data.manufacturingStatus !== "On Hold"
+        && data.manufacturingStatus !== "Cancelled"
+      ) {
+        throw statusError(
+          "Resolve the cost-affecting specification change before proceeding.",
+          409,
+          "SPECIFICATION_CHANGE_ON_HOLD_REQUIRED",
+        );
+      }
+      if (
+        (order.cancellationApproved === true || order.manufacturingStatus === "Cancelled")
+        && data.manufacturingStatus
+        && data.manufacturingStatus !== "Cancelled"
+      ) {
+        throw statusError(
+          "A cancelled Order cannot be returned to active manufacturing.",
+          409,
+          "CANCELLED_ORDER_STATUS_LOCKED",
+        );
+      }
+      if (order.cancellationApproved === false && data.manufacturingStatus === "Cancelled") {
+        throw statusError(
+          "An Order with a rejected cancellation decision cannot be marked Cancelled.",
+          409,
+          "CANCELLED_ORDER_DECISION_CONFLICT",
+        );
+      }
+
       const updated = await repository.updateOrderManufacturing(orderId, data);
       return {
         id: updated.id,
@@ -146,6 +178,31 @@ function createStatusManagement({ repository }) {
       const order = await repository.findOrderById(orderId);
       if (!order) {
         throw statusError("Order was not found.", 404, "ORDER_NOT_FOUND");
+      }
+
+      if (
+        (order.cancellationApproved === true || order.manufacturingStatus === "Cancelled")
+        && (input.deliveryStatus === "Delivered" || input.courierFeeIncrease !== undefined)
+      ) {
+        throw statusError(
+          "A cancelled Order cannot be dispatched or receive a courier-fee revision.",
+          409,
+          "CANCELLED_ORDER_DELIVERY_DENIED",
+        );
+      }
+
+      // A cost-affecting specification change must be resolved before dispatch
+      // or any Approved Price revision arising from courier fees.
+      if (
+        order.specificationChangeRecordedAt
+        && !order.specificationChangeResolvedAt
+        && (input.deliveryStatus === "Delivered" || input.courierFeeIncrease !== undefined)
+      ) {
+        throw statusError(
+          "Resolve the cost-affecting specification change before dispatching or revising delivery fees.",
+          409,
+          "SPECIFICATION_CHANGE_DELIVERY_DENIED",
+        );
       }
 
       if (input.deliveryMethod === "Local handover") {

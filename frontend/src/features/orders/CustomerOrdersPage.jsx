@@ -10,6 +10,7 @@ import { useAuth } from "../../contexts/AuthContext";
 import {
   getMyOrder,
   listMyOrders,
+  requestCustomerOrderCancellation,
 } from "../../services/api";
 
 function formatPrice(amount) {
@@ -24,6 +25,11 @@ function formatDate(value) {
   });
 }
 
+function cancellationDecisionLabel(order) {
+  if (order.cancellationApproved == null) return "Not yet recorded";
+  return order.cancellationApproved ? "Approved by Raazia" : "Rejected by Raazia";
+}
+
 export default function CustomerOrdersPage() {
   const { session, loading: authLoading } = useAuth();
   const token = session?.access_token ?? "";
@@ -31,6 +37,8 @@ export default function CustomerOrdersPage() {
   const [orders, setOrders] = useState([]);
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [cancellationReason, setCancellationReason] = useState("");
+  const [isRequestingCancellation, setIsRequestingCancellation] = useState(false);
   const [error, setError] = useState("");
 
   const loadOrders = useCallback(async () => {
@@ -60,6 +68,7 @@ export default function CustomerOrdersPage() {
 
   async function openOrder(orderId) {
     setSelectedOrder(null);
+    setCancellationReason("");
     setError("");
 
     try {
@@ -70,6 +79,34 @@ export default function CustomerOrdersPage() {
           ? loadError.message
           : "Could not load order details."
       );
+    }
+  }
+
+  async function submitCancellationRequest(event) {
+    event.preventDefault();
+    if (!selectedOrder) return;
+    setIsRequestingCancellation(true);
+    setError("");
+
+    try {
+      const updated = await requestCustomerOrderCancellation(
+        selectedOrder.id,
+        cancellationReason.trim(),
+        token,
+      );
+      setSelectedOrder(updated);
+      setOrders((current) => current.map((order) => (
+        order.id === updated.id ? { ...order, ...updated } : order
+      )));
+      setCancellationReason("");
+    } catch (requestError) {
+      setError(
+        requestError instanceof Error
+          ? requestError.message
+          : "Could not submit the cancellation request."
+      );
+    } finally {
+      setIsRequestingCancellation(false);
     }
   }
 
@@ -260,7 +297,55 @@ export default function CustomerOrdersPage() {
                     <dt>Original inquiry reference</dt>
                     <dd>{selectedOrder.originalInquiryId}</dd>
                   </div>
+                  <div>
+                    <dt>Specification change</dt>
+                    <dd>
+                      {selectedOrder.specificationChangeNotes ?? "No specification change recorded"}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Cancellation request</dt>
+                    <dd>
+                      {selectedOrder.cancellationRequestedAt
+                        ? `Submitted ${formatDate(selectedOrder.cancellationRequestedAt)}`
+                        : "Not submitted"}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Cancellation decision</dt>
+                    <dd>{cancellationDecisionLabel(selectedOrder)}</dd>
+                  </div>
+                  <div>
+                    <dt>Manually recorded refund outcome</dt>
+                    <dd>{selectedOrder.refundOutcome ?? "Not yet recorded"}</dd>
+                  </div>
                 </dl>
+
+                {!selectedOrder.cancellationRequestedAt
+                  && selectedOrder.cancellationApproved == null
+                  && selectedOrder.manufacturingStatus !== "Cancelled" && (
+                    <form onSubmit={submitCancellationRequest} className="customer-cancellation-form">
+                      <label htmlFor={`cancellation-reason-${selectedOrder.id}`}>
+                        Reason for cancellation request (optional)
+                      </label>
+                      <textarea
+                        id={`cancellation-reason-${selectedOrder.id}`}
+                        value={cancellationReason}
+                        onChange={(event) => setCancellationReason(event.target.value)}
+                        rows={3}
+                      />
+                      <p>Submitting a request does not cancel the Order. Raazia records the decision.</p>
+                      <Button
+                        type="submit"
+                        variant="outline"
+                        size="sm"
+                        loading={isRequestingCancellation}
+                        disabled={isRequestingCancellation}
+                      >
+                        Request cancellation
+                      </Button>
+                    </form>
+                  )}
               </Card>
             )}
           </div>

@@ -69,6 +69,39 @@ const deliveryManagementSchema = z.object({
   }
 });
 
+const specificationChangeSchema = z.object({
+  notes: z.string().trim().min(1, "A specification change note is required.").max(1000),
+}).strict();
+
+const priceRevisionSchema = z.object({
+  revisedApprovedPrice: z.number().int().positive(),
+  customerAgreed: z.literal(true),
+  reason: z.string().trim().min(1, "A reason for the price revision is required.").max(500),
+}).strict();
+
+const cancellationRequestSchema = z.object({
+  reason: z.string().trim().max(1000).optional(),
+}).strict();
+
+const cancellationDecisionSchema = z.object({
+  approved: z.boolean(),
+  notes: z.string().trim().max(1000).optional(),
+  refundOutcome: z.string().trim().max(500).nullable().optional(),
+}).strict();
+
+const refundOutcomeSchema = z.object({
+  refundOutcome: z.string().trim().max(500).nullable(),
+}).strict();
+
+function validationError(res, parsed) {
+  return res.status(400).json({
+    error: {
+      code: "VALIDATION_ERROR",
+      message: parsed.error.issues.map((issue) => issue.message).join(" "),
+    },
+  });
+}
+
 function createOrderController(orderManagement, statusManagement) {
   return {
     list: async (req, res) => {
@@ -138,6 +171,66 @@ function createOrderController(orderManagement, statusManagement) {
       );
       res.json({ order });
     },
+    recordSpecificationChange: async (req, res) => {
+      const id = parseOrderId(req, res);
+      if (!id) return;
+      const parsed = specificationChangeSchema.safeParse(req.body);
+      if (!parsed.success) return validationError(res, parsed);
+      const order = await orderManagement.recordSpecificationChange(
+        req.authenticatedUser,
+        id,
+        parsed.data,
+      );
+      res.json({ order });
+    },
+    recordPriceRevision: async (req, res) => {
+      const id = parseOrderId(req, res);
+      if (!id) return;
+      const parsed = priceRevisionSchema.safeParse(req.body);
+      if (!parsed.success) return validationError(res, parsed);
+      const order = await orderManagement.recordPriceRevision(
+        req.authenticatedUser,
+        id,
+        parsed.data,
+      );
+      res.json({ order });
+    },
+    requestCancellation: async (req, res) => {
+      const id = parseOrderId(req, res);
+      if (!id) return;
+      const parsed = cancellationRequestSchema.safeParse(req.body ?? {});
+      if (!parsed.success) return validationError(res, parsed);
+      const order = await orderManagement.requestCancellation(
+        req.authenticatedUser,
+        id,
+        parsed.data,
+      );
+      res.json({ order });
+    },
+    decideCancellation: async (req, res) => {
+      const id = parseOrderId(req, res);
+      if (!id) return;
+      const parsed = cancellationDecisionSchema.safeParse(req.body);
+      if (!parsed.success) return validationError(res, parsed);
+      const order = await orderManagement.decideCancellation(
+        req.authenticatedUser,
+        id,
+        parsed.data,
+      );
+      res.json({ order });
+    },
+    recordRefundOutcome: async (req, res) => {
+      const id = parseOrderId(req, res);
+      if (!id) return;
+      const parsed = refundOutcomeSchema.safeParse(req.body);
+      if (!parsed.success) return validationError(res, parsed);
+      const order = await orderManagement.recordRefundOutcome(
+        req.authenticatedUser,
+        id,
+        parsed.data,
+      );
+      res.json({ order });
+    },
   };
 }
 
@@ -147,4 +240,9 @@ export {
   orderIdSchema,
   paymentStatusSchema,
   deliveryManagementSchema,
+  specificationChangeSchema,
+  priceRevisionSchema,
+  cancellationRequestSchema,
+  cancellationDecisionSchema,
+  refundOutcomeSchema,
 };

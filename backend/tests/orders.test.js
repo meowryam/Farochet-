@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { readFileSync } from "node:fs";
 import { beforeEach, describe, expect, it } from "vitest";
 import request from "supertest";
 import { createApp } from "../src/app.js";
@@ -7,10 +8,12 @@ import { createOrderManagement } from "../src/business-logic/order/index.js";
 function createMemoryRepository() {
   const inquiries = [];
   const orders = [];
+  const priceRevisions = [];
 
-  return {
+  const repository = {
     inquiries,
     orders,
+    priceRevisions,
 
     async listOrders() {
       return [...orders].sort((left, right) =>
@@ -43,7 +46,6 @@ function createMemoryRepository() {
       if (!order) return null;
       Object.assign(order, data, { updatedAt: new Date() });
       if (priceRevision) {
-        if (!this.priceRevisions) this.priceRevisions = [];
         this.priceRevisions.push({
           id: randomUUID(),
           orderId: id,
@@ -52,6 +54,83 @@ function createMemoryRepository() {
         });
       }
       return hydrateOrder(order);
+    },
+
+    async updateOrderApprovedPrice(id, data, priceRevision) {
+      const order = orders.find((item) => item.id === id);
+      if (!order) return null;
+      Object.assign(order, data, { updatedAt: new Date() });
+      this.priceRevisions.push({
+        id: randomUUID(),
+        orderId: id,
+        ...priceRevision,
+        createdAt: new Date(),
+      });
+      return hydrateOrder(order);
+    },
+
+    async recordOrderSpecificationChange(id, data) {
+      const order = orders.find((item) => item.id === id);
+      if (!order) return null;
+      Object.assign(order, data, { updatedAt: new Date() });
+      return hydrateOrder(order);
+    },
+
+    async updateOrderCancellationRequest(id, data) {
+      const order = orders.find((item) => item.id === id);
+      if (!order) return null;
+      Object.assign(order, data, { updatedAt: new Date() });
+      return hydrateOrder(order);
+    },
+
+    async recordCancellationDecision(id, data) {
+      const order = orders.find((item) => item.id === id);
+      if (!order) return null;
+      Object.assign(order, data, { updatedAt: new Date() });
+      return hydrateOrder(order);
+    },
+
+    async updateOrderRefundOutcome(id, data) {
+      const order = orders.find((item) => item.id === id);
+      if (!order) return null;
+      Object.assign(order, { refundOutcome: data.refundOutcome, updatedAt: new Date() });
+      return hydrateOrder(order);
+    },
+
+    async withOrderTransaction(callback) {
+      const orderSnapshot = orders.map((order) => ({
+        reference: order,
+        data: { ...order },
+      }));
+      const revisionSnapshot = priceRevisions.map((revision) => ({
+        reference: revision,
+        data: { ...revision },
+      }));
+      try {
+        return await callback(repository);
+      } catch (error) {
+        orders.length = 0;
+        for (const snapshot of orderSnapshot) {
+          for (const key of Object.keys(snapshot.reference)) {
+            if (!Object.prototype.hasOwnProperty.call(snapshot.data, key)) {
+              delete snapshot.reference[key];
+            }
+          }
+          Object.assign(snapshot.reference, snapshot.data);
+          orders.push(snapshot.reference);
+        }
+        priceRevisions.length = 0;
+        for (const snapshot of revisionSnapshot) {
+          for (const key of Object.keys(snapshot.reference)) {
+            if (!Object.prototype.hasOwnProperty.call(snapshot.data, key)) {
+              delete snapshot.reference[key];
+            }
+          }
+          Object.assign(snapshot.reference, snapshot.data);
+          priceRevisions.push(snapshot.reference);
+        }
+        throw error;
+      }
     },
   };
 
@@ -62,8 +141,11 @@ function createMemoryRepository() {
       inquiry: inquiry
         ? { ...inquiry, product: inquiry.product ?? null }
         : null,
+      priceRevisions: priceRevisions.filter((revision) => revision.orderId === order.id),
     };
   }
+
+  return repository;
 }
 
 function seedOrder(dataRepository, overrides = {}) {
@@ -87,6 +169,15 @@ function seedOrder(dataRepository, overrides = {}) {
     deliveryFee: null,
     deliveryTrackingInformation: null,
     estimatedCompletionDate: null,
+    specificationChangeNotes: null,
+    specificationChangeRecordedAt: null,
+    specificationChangeResolvedAt: null,
+    cancellationRequestedAt: null,
+    cancellationRequestReason: null,
+    cancellationApproved: null,
+    cancellationDecisionAt: null,
+    cancellationDecisionNotes: null,
+    refundOutcome: null,
     confirmedAt: new Date(),
     updatedAt: new Date(),
   };
@@ -654,5 +745,534 @@ describe("Confirmed Order ownership and status independence", () => {
 
     expect(order.approvedPrice).toBe(5000);
     expect(dataRepository.priceRevisions ?? []).toEqual([]);
+  });
+});
+
+describe("Order changes and cancellation", () => {
+  it("records an authorized, agreed price revision with the required change information", async () => {
+    const dataRepository = createMemoryRepository();
+    const app = createApp({ dataRepository, authenticate: raaziaSession });
+    const { order } = seedOrder(dataRepository);
+
+    await request(app)
+      .patch(`/api/admin/orders/${order.id}/price-revision`)
+      .send({
+        revisedApprovedPrice: 5500,
+        customerAgreed: false,
+        reason: "Agreed specification change",
+      })
+      .expect(400);
+
+    await request(app)
+      .patch(`/api/admin/orders/${order.id}/price-revision`)
+      .send({
+        revisedApprovedPrice: 5500,
+        customerAgreed: true,
+        reason: "Agreed specification change",
+        actingUserId: "client-supplied-user",
+      })
+      .expect(400);
+
+    await request(app)
+      .patch(`/api/admin/orders/${order.id}/price-revision`)
+      .send({
+        revisedApprovedPrice: 5500,
+        customerAgreed: true,
+        reason: "Agreed specification change",
+      })
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body.order.approvedPrice).toBe(5500);
+        expect(body.order.priceRevisions).toHaveLength(1);
+        expect(body.order.priceRevisions[0]).toMatchObject({
+          originalPrice: 5000,
+          revisedPrice: 5500,
+          actingUserId: "raazia-test-user",
+          customerAgreed: true,
+          reason: "Agreed specification change",
+        });
+        expect(body.order.priceRevisions[0].createdAt).toBeTruthy();
+      });
+
+    expect(order.approvedPrice).toBe(5500);
+    expect(dataRepository.priceRevisions).toHaveLength(1);
+  });
+
+  it("rejects unauthenticated, Customer, and malformed price revisions", async () => {
+    const dataRepository = createMemoryRepository();
+    const { order } = seedOrder(dataRepository);
+    const app = createApp({ dataRepository, authenticate: raaziaSession });
+
+    await request(app)
+      .patch(`/api/admin/orders/${order.id}/price-revision`)
+      .send({ revisedApprovedPrice: 0, customerAgreed: true, reason: "Correction" })
+      .expect(400);
+    await request(app)
+      .patch(`/api/admin/orders/${order.id}/price-revision`)
+      .send({ revisedApprovedPrice: 5000, customerAgreed: true, reason: "   " })
+      .expect(400);
+
+    const customerApp = createApp({
+      dataRepository,
+      authenticate: customerSession(randomUUID()),
+    });
+    await request(customerApp)
+      .patch(`/api/admin/orders/${order.id}/price-revision`)
+      .send({ revisedApprovedPrice: 5000, customerAgreed: true, reason: "Correction" })
+      .expect(403);
+
+    const unauthenticatedApp = createApp({ dataRepository });
+    await request(unauthenticatedApp)
+      .patch(`/api/admin/orders/${order.id}/price-revision`)
+      .send({ revisedApprovedPrice: 5000, customerAgreed: true, reason: "Correction" })
+      .expect(401);
+  });
+
+  it("records a cost-affecting specification change, holds the Order, and prevents outdated progress", async () => {
+    const dataRepository = createMemoryRepository();
+    const app = createApp({ dataRepository, authenticate: raaziaSession });
+    const { order } = seedOrder(dataRepository, { order: { paymentStatus: "Partial Payment" } });
+
+    await request(app)
+      .patch(`/api/admin/orders/${order.id}/specification-change`)
+      .send({ notes: "Larger size changes material cost." })
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body.order.manufacturingStatus).toBe("On Hold");
+        expect(body.order.specificationChangeNotes).toBe("Larger size changes material cost.");
+        expect(body.order.specificationChangeResolvedAt).toBeNull();
+      });
+
+    await request(app)
+      .patch(`/api/admin/orders/${order.id}/status`)
+      .send({ manufacturingStatus: "In Progress" })
+      .expect(409);
+
+    await request(app)
+      .patch(`/api/admin/orders/${order.id}/price-revision`)
+      .send({
+        revisedApprovedPrice: 5600,
+        customerAgreed: true,
+        reason: "Agreed revised specification",
+      })
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body.order.specificationChangeResolvedAt).toBeTruthy();
+        expect(body.order.approvedPrice).toBe(5600);
+      });
+
+    await request(app)
+      .patch(`/api/admin/orders/${order.id}/status`)
+      .send({ manufacturingStatus: "In Progress" })
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body.order.manufacturingStatus).toBe("In Progress");
+        expect(body.order.paymentStatus).toBe("Partial Payment");
+        expect(body.order.deliveryStatus).toBeNull();
+      });
+  });
+
+  it("lets the owning Customer request cancellation but keeps the decision with Raazia", async () => {
+    const dataRepository = createMemoryRepository();
+    const customerId = randomUUID();
+    const { order: owned } = seedOrder(dataRepository, { inquiry: { customerId } });
+    const { order: foreign } = seedOrder(dataRepository);
+    const customerApp = createApp({
+      dataRepository,
+      authenticate: customerSession(customerId),
+    });
+    const adminApp = createApp({ dataRepository, authenticate: raaziaSession });
+
+    await request(customerApp)
+      .post(`/api/customer/orders/${foreign.id}/cancellation-request`)
+      .send({ reason: "Not mine" })
+      .expect(403);
+
+    await request(customerApp)
+      .post(`/api/customer/orders/${owned.id}/cancellation-request`)
+      .send({ reason: "Changed my mind" })
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body.order.cancellationRequestedAt).toBeTruthy();
+        expect(body.order.cancellationRequestReason).toBe("Changed my mind");
+        expect(body.order.cancellationApproved).toBeNull();
+        expect(body.order.manufacturingStatus).toBe("Incomplete");
+      });
+
+    await request(customerApp)
+      .patch(`/api/admin/orders/${owned.id}/cancellation-decision`)
+      .send({ approved: true })
+      .expect(403);
+
+    await request(adminApp)
+      .patch(`/api/admin/orders/${owned.id}/cancellation-decision`)
+      .send({
+        approved: true,
+        notes: "Raazia decided to cancel.",
+        refundOutcome: "Full refund recorded manually.",
+      })
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body.order.manufacturingStatus).toBe("Cancelled");
+        expect(body.order.cancellationApproved).toBe(true);
+        expect(body.order.cancellationDecisionNotes).toBe("Raazia decided to cancel.");
+        expect(body.order.refundOutcome).toBe("Full refund recorded manually.");
+        expect(body.order.paymentStatus).toBeNull();
+        expect(body.order.deliveryStatus).toBeNull();
+      });
+
+    await request(adminApp)
+      .patch(`/api/admin/orders/${owned.id}/status`)
+      .send({ manufacturingStatus: "In Progress" })
+      .expect(409);
+    await request(adminApp)
+      .patch(`/api/admin/orders/${owned.id}/delivery`)
+      .send({ deliveryMethod: "Courier/service delivery", deliveryFee: 300, deliveryStatus: "Delivered" })
+      .expect(409);
+  });
+
+  it("retains a rejected cancellation request and never executes a refund", async () => {
+    const dataRepository = createMemoryRepository();
+    const customerId = randomUUID();
+    const { order } = seedOrder(dataRepository, {
+      inquiry: { customerId },
+      order: { paymentStatus: "Partial Payment", deliveryStatus: null },
+    });
+    const customerApp = createApp({
+      dataRepository,
+      authenticate: customerSession(customerId),
+    });
+    const adminApp = createApp({ dataRepository, authenticate: raaziaSession });
+
+    await request(adminApp)
+      .patch(`/api/admin/orders/${order.id}/cancellation-decision`)
+      .send({ approved: false })
+      .expect(409);
+
+    await request(customerApp)
+      .post(`/api/customer/orders/${order.id}/cancellation-request`)
+      .send({})
+      .expect(200);
+
+    await request(adminApp)
+      .patch(`/api/admin/orders/${order.id}/cancellation-decision`)
+      .send({
+        approved: false,
+        notes: "No financial loss; continue.",
+        refundOutcome: "Manually recorded outcome.",
+      })
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body.order.cancellationApproved).toBe(false);
+        expect(body.order.manufacturingStatus).toBe("Incomplete");
+        expect(body.order.paymentStatus).toBe("Partial Payment");
+        expect(body.order.deliveryStatus).toBeNull();
+        expect(body.order.refundOutcome).toBe("Manually recorded outcome.");
+      });
+
+    await request(adminApp)
+      .patch(`/api/admin/orders/${order.id}/cancellation-decision`)
+      .send({ approved: false, notes: "Repeated click." })
+      .expect(200)
+      .expect(({ body }) => expect(body.order.cancellationDecisionNotes).toBe("No financial loss; continue."));
+
+    expect(order.cancellationApproved).toBe(false);
+    expect(order.manufacturingStatus).toBe("Incomplete");
+  });
+
+  it("rejects delivered-order cancellation approval and price revisions on cancelled Orders", async () => {
+    const dataRepository = createMemoryRepository();
+    const customerId = randomUUID();
+    const { order: delivered } = seedOrder(dataRepository, {
+      inquiry: { customerId },
+      order: { deliveryStatus: "Delivered" },
+    });
+    const customerApp = createApp({
+      dataRepository,
+      authenticate: customerSession(customerId),
+    });
+    const adminApp = createApp({ dataRepository, authenticate: raaziaSession });
+
+    await request(customerApp)
+      .post(`/api/customer/orders/${delivered.id}/cancellation-request`)
+      .send({})
+      .expect(200);
+    await request(adminApp)
+      .patch(`/api/admin/orders/${delivered.id}/cancellation-decision`)
+      .send({ approved: true })
+      .expect(409);
+
+    const { order: cancelled } = seedOrder(dataRepository, {
+      order: { manufacturingStatus: "Cancelled", cancellationApproved: true },
+    });
+    await request(adminApp)
+      .patch(`/api/admin/orders/${cancelled.id}/price-revision`)
+      .send({ revisedApprovedPrice: 5200, customerAgreed: true, reason: "Late change" })
+      .expect(409);
+
+    const { order: statusCancelled } = seedOrder(dataRepository, {
+      order: { manufacturingStatus: "Cancelled" },
+    });
+    await request(adminApp)
+      .patch(`/api/admin/orders/${statusCancelled.id}/status`)
+      .send({ manufacturingStatus: "In Progress" })
+      .expect(409);
+    await request(adminApp)
+      .patch(`/api/admin/orders/${statusCancelled.id}/delivery`)
+      .send({ deliveryMethod: "Courier/service delivery", deliveryFee: 300, deliveryStatus: "Delivered" })
+      .expect(409);
+  });
+
+  it("lets Raazia approve cancellation without a Customer request after renegotiation fails", async () => {
+    const dataRepository = createMemoryRepository();
+    const app = createApp({ dataRepository, authenticate: raaziaSession });
+    const { order } = seedOrder(dataRepository, {
+      order: {
+        manufacturingStatus: "On Hold",
+        specificationChangeNotes: "Larger size changes material cost.",
+        specificationChangeRecordedAt: new Date(),
+        specificationChangeResolvedAt: null,
+      },
+    });
+
+    await request(app)
+      .patch(`/api/admin/orders/${order.id}/cancellation-decision`)
+      .send({
+        approved: true,
+        notes: "No mutually acceptable price; proceeding would cause financial loss.",
+      })
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body.order.cancellationRequestedAt).toBeNull();
+        expect(body.order.cancellationRequestReason).toBeNull();
+        expect(body.order.cancellationApproved).toBe(true);
+        expect(body.order.manufacturingStatus).toBe("Cancelled");
+        expect(body.order.cancellationDecisionNotes).toBe(
+          "No mutually acceptable price; proceeding would cause financial loss.",
+        );
+      });
+  });
+
+  it("rolls back the On Hold status when the specification record cannot be committed", async () => {
+    const dataRepository = createMemoryRepository();
+    const { order } = seedOrder(dataRepository);
+    const updateManufacturing = dataRepository.updateOrderManufacturing.bind(dataRepository);
+    dataRepository.updateOrderManufacturing = async (...args) => {
+      const updated = await updateManufacturing(...args);
+      throw new Error("simulated transaction failure");
+    };
+    const app = createApp({ dataRepository, authenticate: raaziaSession });
+
+    await request(app)
+      .patch(`/api/admin/orders/${order.id}/specification-change`)
+      .send({ notes: "Larger size changes material cost." })
+      .expect(500);
+
+    expect(order.manufacturingStatus).toBe("Incomplete");
+    expect(order.specificationChangeNotes).toBeNull();
+    expect(order.specificationChangeRecordedAt).toBeNull();
+  });
+
+  it("rolls back the Cancelled status when the cancellation decision cannot be committed", async () => {
+    const dataRepository = createMemoryRepository();
+    const { order } = seedOrder(dataRepository, {
+      order: { cancellationRequestedAt: new Date() },
+    });
+    const recordDecision = dataRepository.recordCancellationDecision.bind(dataRepository);
+    dataRepository.recordCancellationDecision = async (...args) => {
+      const recorded = await recordDecision(...args);
+      throw new Error("simulated transaction failure");
+    };
+    const app = createApp({ dataRepository, authenticate: raaziaSession });
+
+    await request(app)
+      .patch(`/api/admin/orders/${order.id}/cancellation-decision`)
+      .send({ approved: true, notes: "Approved." })
+      .expect(500);
+
+    expect(order.manufacturingStatus).toBe("Incomplete");
+    expect(order.cancellationApproved).toBeNull();
+    expect(order.cancellationDecisionAt).toBeNull();
+  });
+
+  it("blocks dispatch and courier-fee revisions while a specification change is unresolved", async () => {
+    const dataRepository = createMemoryRepository();
+    const app = createApp({ dataRepository, authenticate: raaziaSession });
+    const { order } = seedOrder(dataRepository, {
+      order: {
+        manufacturingStatus: "On Hold",
+        specificationChangeNotes: "Larger size changes material cost.",
+        specificationChangeRecordedAt: new Date(),
+        specificationChangeResolvedAt: null,
+      },
+    });
+
+    await request(app)
+      .patch(`/api/admin/orders/${order.id}/delivery`)
+      .send({ deliveryMethod: "Courier/service delivery", deliveryFee: 300, deliveryStatus: "Delivered" })
+      .expect(409)
+      .expect(({ body }) => expect(body.error.code).toBe("SPECIFICATION_CHANGE_DELIVERY_DENIED"));
+
+    await request(app)
+      .patch(`/api/admin/orders/${order.id}/delivery`)
+      .send({
+        deliveryMethod: "Courier/service delivery",
+        deliveryFee: 300,
+        courierFeeIncrease: 200,
+        customerAgreed: true,
+        revisedApprovedPrice: 5200,
+      })
+      .expect(409);
+
+    expect(order.deliveryStatus).toBeNull();
+    expect(order.approvedPrice).toBe(5000);
+    expect(dataRepository.priceRevisions).toEqual([]);
+  });
+
+  it("rejects a cancellation decision conflict with an already Cancelled Order", async () => {
+    const dataRepository = createMemoryRepository();
+    const app = createApp({ dataRepository, authenticate: raaziaSession });
+    const { order } = seedOrder(dataRepository, {
+      order: {
+        manufacturingStatus: "Cancelled",
+        cancellationApproved: true,
+        cancellationDecisionNotes: "Approved earlier.",
+      },
+    });
+
+    await request(app)
+      .patch(`/api/admin/orders/${order.id}/cancellation-decision`)
+      .send({ approved: false, notes: "Late rejection." })
+      .expect(409)
+      .expect(({ body }) => expect(body.error.code).toBe("CANCELLED_ORDER_DECISION_CONFLICT"));
+
+    expect(order.cancellationApproved).toBe(true);
+    expect(order.manufacturingStatus).toBe("Cancelled");
+
+    const { order: rejected } = seedOrder(dataRepository, {
+      order: { cancellationApproved: false },
+    });
+    await request(app)
+      .patch(`/api/admin/orders/${rejected.id}/status`)
+      .send({ manufacturingStatus: "Cancelled" })
+      .expect(409)
+      .expect(({ body }) => expect(body.error.code).toBe("CANCELLED_ORDER_DECISION_CONFLICT"));
+    expect(rejected.manufacturingStatus).toBe("Incomplete");
+  });
+
+  it("records a manual refund outcome without changing statuses or executing a refund", async () => {
+    const dataRepository = createMemoryRepository();
+    const app = createApp({ dataRepository, authenticate: raaziaSession });
+    const { order } = seedOrder(dataRepository, {
+      order: { paymentStatus: "Partial Payment" },
+    });
+
+    await request(app)
+      .patch(`/api/admin/orders/${order.id}/refund-outcome`)
+      .send({ refundOutcome: "Full refund recorded manually." })
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body.order.refundOutcome).toBe("Full refund recorded manually.");
+        expect(body.order.paymentStatus).toBe("Partial Payment");
+        expect(body.order.manufacturingStatus).toBe("Incomplete");
+        expect(body.order.cancellationApproved).toBeNull();
+      });
+
+    await request(app)
+      .patch(`/api/admin/orders/${order.id}/refund-outcome`)
+      .send({ refundOutcome: null })
+      .expect(200)
+      .expect(({ body }) => expect(body.order.refundOutcome).toBeNull());
+
+    const customerApp = createApp({
+      dataRepository,
+      authenticate: customerSession(randomUUID()),
+    });
+    await request(customerApp)
+      .patch(`/api/admin/orders/${order.id}/refund-outcome`)
+      .send({ refundOutcome: "Customer attempt" })
+      .expect(403);
+  });
+
+  it("excludes internal decision notes and price history from Customer order views", async () => {
+    const dataRepository = createMemoryRepository();
+    const customerId = randomUUID();
+    const { order } = seedOrder(dataRepository, {
+      inquiry: { customerId },
+      order: { cancellationDecisionNotes: "Raazia internal note" },
+    });
+    await dataRepository.updateOrderApprovedPrice(order.id, { approvedPrice: 5200 }, {
+      originalPrice: 5000,
+      revisedPrice: 5200,
+      actingUserId: "raazia-test-user",
+      customerAgreed: true,
+      reason: "Agreed revision",
+    });
+    const adminApp = createApp({ dataRepository, authenticate: raaziaSession });
+    const customerApp = createApp({
+      dataRepository,
+      authenticate: customerSession(customerId),
+    });
+
+    const adminList = await request(adminApp).get("/api/admin/orders").expect(200);
+    expect(adminList.body.orders[0]).toHaveProperty("cancellationDecisionNotes");
+    expect(adminList.body.orders[0]).toHaveProperty("priceRevisions");
+
+    const customerList = await request(customerApp).get("/api/customer/orders").expect(200);
+    expect(customerList.body.orders[0]).not.toHaveProperty("cancellationDecisionNotes");
+    expect(customerList.body.orders[0]).not.toHaveProperty("priceRevisions");
+
+    await request(customerApp)
+      .get(`/api/customer/orders/${order.id}`)
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body.order).not.toHaveProperty("cancellationDecisionNotes");
+        expect(body.order).not.toHaveProperty("priceRevisions");
+      });
+
+    await request(customerApp)
+      .post(`/api/customer/orders/${order.id}/cancellation-request`)
+      .send({})
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body.order).not.toHaveProperty("cancellationDecisionNotes");
+        expect(body.order).not.toHaveProperty("priceRevisions");
+      });
+  });
+});
+
+describe("Order change architecture and migration boundaries", () => {
+  const migration = readFileSync(
+    new URL("../prisma/migrations/20261125120000_order_changes_cancellation/migration.sql", import.meta.url),
+    "utf8",
+  );
+  const orderBusinessLogic = readFileSync(
+    new URL("../src/business-logic/order/index.js", import.meta.url),
+    "utf8",
+  );
+
+  it("grants least-privilege runtime reads and RLS for order price history", () => {
+    expect(migration).toContain('GRANT SELECT ON TABLE public."OrderPriceRevision" TO farochet_runtime;');
+    expect(migration).toMatch(/CREATE POLICY runtime_order_price_revision_select[\s\S]*FOR SELECT[\s\S]*TO farochet_runtime/);
+  });
+
+  it("grants runtime UPDATE for status and order-change columns", () => {
+    const grantMatch = migration.match(/GRANT UPDATE \(([\s\S]*?)\) ON TABLE public\."Order" TO farochet_runtime;/);
+    expect(grantMatch).not.toBeNull();
+    for (const column of [
+      '"manufacturingStatus"',
+      '"paymentStatus"',
+      '"estimatedCompletionDate"',
+      '"refundOutcome"',
+      '"cancellationApproved"',
+      '"cancellationDecisionNotes"',
+    ]) {
+      expect(grantMatch[1]).toContain(column);
+    }
+  });
+
+  it("does not add decentralized Raazia role checks to Order Management", () => {
+    expect(orderBusinessLogic).not.toMatch(/assertRaazia|assertCustomer/);
+    expect(orderBusinessLogic).toContain("Role authorization belongs to centralized Middleware");
   });
 });

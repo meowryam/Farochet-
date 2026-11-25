@@ -7,6 +7,7 @@ import Button from "../../components/ui/Button";
 import Card from "../../components/ui/Card";
 import EmptyState from "../../components/ui/EmptyState";
 import SelectField from "../../components/ui/SelectField";
+import TextArea from "../../components/ui/TextArea";
 import TextField from "../../components/ui/TextField";
 import { useAuth } from "../../contexts/AuthContext";
 import {
@@ -15,6 +16,10 @@ import {
   updateAdminManufacturingProgress,
   updateAdminPaymentStatus,
   updateAdminDelivery,
+  recordAdminSpecificationChange,
+  recordAdminOrderPriceRevision,
+  recordAdminCancellationDecision,
+  recordAdminRefundOutcome,
 } from "../../services/api";
 
 function formatDate(value) {
@@ -51,6 +56,13 @@ export default function OrderManagementPage() {
   const [courierFeeIncrease, setCourierFeeIncrease] = useState("");
   const [customerAgreed, setCustomerAgreed] = useState(false);
   const [revisedApprovedPrice, setRevisedApprovedPrice] = useState("");
+  const [specificationChangeNotes, setSpecificationChangeNotes] = useState("");
+  const [orderRevisionPrice, setOrderRevisionPrice] = useState("");
+  const [orderRevisionReason, setOrderRevisionReason] = useState("");
+  const [orderRevisionAgreed, setOrderRevisionAgreed] = useState(false);
+  const [cancellationApproved, setCancellationApproved] = useState("");
+  const [cancellationNotes, setCancellationNotes] = useState("");
+  const [refundOutcome, setRefundOutcome] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
@@ -97,9 +109,23 @@ export default function OrderManagementPage() {
       setCourierFeeIncrease("");
       setCustomerAgreed(false);
       setRevisedApprovedPrice("");
+      setSpecificationChangeNotes("");
+      setOrderRevisionPrice("");
+      setOrderRevisionReason("");
+      setOrderRevisionAgreed(false);
+      setCancellationApproved("");
+      setCancellationNotes("");
+      setRefundOutcome(order.refundOutcome ?? "");
     } catch (detailError) {
       setError(detailError instanceof Error ? detailError.message : "Could not load order details.");
     }
+  }
+
+  function applyOrderUpdate(updated) {
+    setSelectedOrder((current) => ({ ...(current ?? {}), ...updated }));
+    setOrders((current) => current.map((order) => (
+      order.id === updated.id ? { ...order, ...updated } : order
+    )));
   }
 
   async function saveManufacturingProgress(event) {
@@ -181,6 +207,85 @@ export default function OrderManagementPage() {
       setRevisedApprovedPrice("");
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : "Could not update delivery information.");
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  async function saveSpecificationChange(event) {
+    event.preventDefault();
+    if (!selectedOrder || !specificationChangeNotes.trim()) return;
+    setIsSaving(true);
+    setError("");
+    try {
+      const updated = await recordAdminSpecificationChange(
+        selectedOrder.id,
+        specificationChangeNotes.trim(),
+      );
+      applyOrderUpdate(updated);
+      setSpecificationChangeNotes("");
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : "Could not record the specification change.");
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  async function saveOrderPriceRevision(event) {
+    event.preventDefault();
+    if (!selectedOrder) return;
+    setIsSaving(true);
+    setError("");
+    try {
+      const updated = await recordAdminOrderPriceRevision(selectedOrder.id, {
+        revisedApprovedPrice: Number(orderRevisionPrice),
+        customerAgreed: orderRevisionAgreed,
+        reason: orderRevisionReason.trim(),
+      });
+      applyOrderUpdate(updated);
+      setOrderRevisionPrice("");
+      setOrderRevisionReason("");
+      setOrderRevisionAgreed(false);
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : "Could not record the price revision.");
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  async function saveCancellationDecision(event) {
+    event.preventDefault();
+    if (!selectedOrder) return;
+    setIsSaving(true);
+    setError("");
+    try {
+      const updated = await recordAdminCancellationDecision(selectedOrder.id, {
+        approved: cancellationApproved === "approved",
+        notes: cancellationNotes.trim() || undefined,
+      });
+      applyOrderUpdate(updated);
+      setCancellationApproved("");
+      setCancellationNotes("");
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : "Could not record the cancellation decision.");
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  async function saveRefundOutcome(event) {
+    event.preventDefault();
+    if (!selectedOrder) return;
+    setIsSaving(true);
+    setError("");
+    try {
+      const updated = await recordAdminRefundOutcome(
+        selectedOrder.id,
+        refundOutcome.trim() || null,
+      );
+      applyOrderUpdate(updated);
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : "Could not record the refund outcome.");
     } finally {
       setIsSaving(false);
     }
@@ -268,6 +373,10 @@ export default function OrderManagementPage() {
               <div><strong>Delivery fee</strong><p>{selectedOrder.deliveryFee == null ? "Not yet recorded" : formatPrice(selectedOrder.deliveryFee)}</p></div>
               <div><strong>Tracking/delivery information</strong><p>{selectedOrder.deliveryTrackingInformation ?? "Not yet provided"}</p></div>
               <div><strong>Estimated Completion Date</strong><p>{formatDate(selectedOrder.estimatedCompletionDate)}</p></div>
+              <div><strong>Specification change</strong><p>{selectedOrder.specificationChangeNotes ?? "None recorded"}</p></div>
+              <div><strong>Cancellation request</strong><p>{selectedOrder.cancellationRequestReason ?? "None"}</p></div>
+              <div><strong>Cancellation decision</strong><p>{selectedOrder.cancellationApproved == null ? "Not yet recorded" : (selectedOrder.cancellationApproved ? "Approved" : "Rejected")}</p></div>
+              <div><strong>Manual refund outcome</strong><p>{selectedOrder.refundOutcome ?? "None recorded"}</p></div>
             </div>
             <form onSubmit={saveManufacturingProgress} className="catalogue-info-fields">
               <SelectField
@@ -387,6 +496,124 @@ export default function OrderManagementPage() {
               <div className="catalogue-form-actions">
                 <Button type="submit" admin loading={isSaving} disabled={isSaving}>
                   Save delivery information
+                </Button>
+              </div>
+            </form>
+
+            <form onSubmit={saveSpecificationChange} className="catalogue-info-fields">
+              <h3>Cost-affecting specification changes</h3>
+              <TextArea
+                id={`specification-change-${selectedOrder.id}`}
+                label="Specification change note"
+                value={specificationChangeNotes}
+                onChange={(event) => setSpecificationChangeNotes(event.target.value)}
+                helpText="Records the change and places the Order On Hold until revised terms are agreed."
+                required
+              />
+              <div className="catalogue-form-actions">
+                <Button type="submit" admin loading={isSaving} disabled={isSaving || !specificationChangeNotes.trim()}>
+                  Place On Hold for renegotiation
+                </Button>
+              </div>
+            </form>
+
+            <form onSubmit={saveOrderPriceRevision} className="catalogue-info-fields">
+              <h3>Order price revision</h3>
+              <TextField
+                id={`order-revision-price-${selectedOrder.id}`}
+                label="Revised Order Approved Price (PKR)"
+                type="number"
+                value={orderRevisionPrice}
+                onChange={(event) => setOrderRevisionPrice(event.target.value)}
+                required
+              />
+              <TextArea
+                id={`order-revision-reason-${selectedOrder.id}`}
+                label="Reason for revision"
+                value={orderRevisionReason}
+                onChange={(event) => setOrderRevisionReason(event.target.value)}
+                required
+              />
+              <label>
+                <input
+                  type="checkbox"
+                  checked={orderRevisionAgreed}
+                  onChange={(event) => setOrderRevisionAgreed(event.target.checked)}
+                />
+                {" "}Customer has agreed to the revised price
+              </label>
+              <p>The original price, revised price, time, Order, and acting user are retained in price history.</p>
+              <div className="catalogue-form-actions">
+                <Button type="submit" admin loading={isSaving} disabled={isSaving || !orderRevisionAgreed}>
+                  Record price revision
+                </Button>
+              </div>
+            </form>
+
+            {selectedOrder.priceRevisions?.length > 0 && (
+              <div>
+                <h3>Price revision history</h3>
+                <ul>
+                  {selectedOrder.priceRevisions.map((revision) => (
+                    <li key={revision.id}>
+                      {formatPrice(revision.originalPrice)} → {formatPrice(revision.revisedPrice)}
+                      {" · "}{formatDate(revision.createdAt)}
+                      {" · "}{revision.reason}
+                      {" · "}{revision.customerAgreed ? "Customer agreed" : "Agreement not recorded"}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            <form onSubmit={saveCancellationDecision} className="catalogue-info-fields">
+              <h3>Cancellation decision</h3>
+              <p>
+                Only Raazia records the outcome. A Customer request is not
+                required when cancelling after failed renegotiation.
+              </p>
+              <SelectField
+                id={`cancellation-decision-${selectedOrder.id}`}
+                label="Cancellation decision"
+                value={cancellationApproved}
+                onChange={(event) => setCancellationApproved(event.target.value)}
+                options={[
+                  { value: "approved", label: "Approve cancellation" },
+                  { value: "rejected", label: "Reject cancellation" },
+                ]}
+                required
+                disabled={selectedOrder.cancellationApproved != null}
+              />
+              <TextArea
+                id={`cancellation-notes-${selectedOrder.id}`}
+                label="Cancellation decision note"
+                value={cancellationNotes}
+                onChange={(event) => setCancellationNotes(event.target.value)}
+              />
+              <div className="catalogue-form-actions">
+                <Button
+                  type="submit"
+                  admin
+                  loading={isSaving}
+                  disabled={isSaving || selectedOrder.cancellationApproved != null || !cancellationApproved}
+                >
+                  Record cancellation decision
+                </Button>
+              </div>
+            </form>
+
+            <form onSubmit={saveRefundOutcome} className="catalogue-info-fields">
+              <h3>Refund outcome</h3>
+              <TextField
+                id={`refund-outcome-${selectedOrder.id}`}
+                label="Manually recorded refund outcome"
+                value={refundOutcome}
+                onChange={(event) => setRefundOutcome(event.target.value)}
+                helpText="Recording an outcome does not calculate or execute a refund and does not change payment status."
+              />
+              <div className="catalogue-form-actions">
+                <Button type="submit" admin loading={isSaving} disabled={isSaving}>
+                  Record refund outcome
                 </Button>
               </div>
             </form>

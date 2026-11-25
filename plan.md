@@ -1,9 +1,9 @@
 # Raazia — Deliverable 4 Implementation Plan
 
-**Plan version:** 2.7
-**Last updated:** 23 November 2026
-**Status:** The Bootstrap scaffold, Member 2 Cycle 1 Authentication & Role Access, Member 4 confirmed-order code slice, public Customer Product Catalogue Browsing, Member 2 Wishlist Management and Inquiry Submission, and Member 1 Cycle 4 Product Details are implemented locally. The Admin drawer and Inquiry identity were previously verified at desktop/mobile sizes. Member 1's `20261123200000_customization_request_lifecycle` and the narrowly scoped `20261123210000_runtime_public_discount_read` migrations are applied to the shared database: all 12 migrations are up to date, Prisma reports no schema difference, and the runtime grants/RLS policies are verified. A rollback-only runtime transaction verified Inquiry → Customization → PendingOrderRequest without persisting test rows. Live `/api/health`, `/api/pricing/public`, `/api/products`, and `/api/products/:id` return HTTP 200; Product Details exposes only public prices and passes the effective-price check. Member 4 Cycle 3 Payment Management and Cycle 4 Delivery Management are complete as local code slices. The combined backend suite passed 135/135, frontend suite passed, and the production build passed (113 modules).
-**Previous plan version:** 2.6 is preserved in local Git commit `2e192b2`; the older v2.5 is preserved at `docs/plan-history/plan-v16.md`.
+**Plan version:** 2.9
+**Last updated:** 25 November 2026
+**Status:** The Bootstrap scaffold, Member 2 Cycle 1 Authentication & Role Access, Member 4 confirmed-order code slice, public Customer Product Catalogue Browsing, Member 2 Wishlist Management and Inquiry Submission, and Member 1 Cycle 4 Product Details are implemented locally. The Admin drawer and Inquiry identity were previously verified at desktop/mobile sizes. Member 1's `20261123200000_customization_request_lifecycle` and the narrowly scoped `20261123210000_runtime_public_discount_read` migrations are applied to the shared database: all 12 migrations are up to date, Prisma reports no schema difference, and the runtime grants/RLS policies are verified. A rollback-only runtime transaction verified Inquiry → Customization → PendingOrderRequest without persisting test rows. Live `/api/health`, `/api/pricing/public`, `/api/products`, and `/api/products/:id` return HTTP 200; Product Details exposes only public prices and passes the effective-price check. Member 4 Cycle 3 Payment Management and Cycle 4 Delivery Management are complete as local code slices. The combined backend suite passed 135/135, frontend suite passed, and the production build passed (113 modules). Cycle 5 Member 4 Order Changes & Cancellation is complete locally after all eight audit findings were addressed: Raazia-initiated cancellation after failed renegotiation, least-privilege runtime `SELECT`/RLS and column `UPDATE` grants, atomic specification-change/`On Hold` and cancellation-decision/`Cancelled` transactions, unresolved-specification dispatch and courier-fee guards, rejection/`Cancelled` conflict guards, an independent manual refund-outcome operation, customer/admin order view separation, and removal of new decentralized role checks from Order Management. The `20261125120000_order_changes_cancellation` migration remains prepared but not applied to the shared database. Focused backend order tests passed 37/37; the full backend suite passed 228/228; focused frontend order tests passed 9/9; Prisma validation/generation and the frontend production build passed. The full frontend suite still has two pre-existing failures in the untouched `AdminShell.test.jsx` (5-link expectation vs. the current 6-link admin navigation).
+**Previous plan version:** 2.7 is preserved at `docs/plan-history/plan-v27.md`; 2.6 is preserved in local Git commit `2e192b2`; the older v2.5 is preserved at `docs/plan-history/plan-v16.md`.
 **Target submission/demo date:** 27 November 2026  
 **Owners:** Members 1–4 share project ownership equally; each owns their assigned vertical slice. There is no separately designated project coordinator.
 
@@ -497,14 +497,16 @@ Cycle dependencies and integration checks are in Sections 9–13.
 **Requirements:** FR-12, FR-13, FR-14, FR-15.
 
 **Acceptance criteria:**
-- [ ] Raazia can record an authorized order-specific price revision with original price, revised price, timestamp, affected Order ID and acting user ID.
-- [ ] Revised Approved Price is recorded only after mutual agreement where the PRD requires it.
-- [ ] A cost-affecting specification change can place the Order `On Hold` while terms are renegotiated; the Order must not proceed under outdated terms.
-- [ ] Customer may request cancellation, but only Raazia decides and records the cancellation outcome.
-- [ ] Cancellation/refund information remains distinct from payment and delivery status; refunds are manually recorded and never executed automatically.
-- [ ] Cancelled Orders are not treated as active or dispatched; all three status dimensions remain independently maintained.
+- [x] Raazia can record an authorized order-specific price revision with original price, revised price, timestamp, affected Order ID and acting user ID.
+- [x] Revised Approved Price is recorded only after mutual agreement where the PRD requires it.
+- [x] A cost-affecting specification change can place the Order `On Hold` while terms are renegotiated; the Order must not proceed under outdated terms.
+- [x] Customer may request cancellation, but only Raazia decides and records the cancellation outcome; Raazia may also initiate cancellation after failed renegotiation without a Customer request.
+- [x] Cancellation/refund information remains distinct from payment and delivery status; a manual refund outcome may be recorded independently and is never calculated, executed, or treated as a payment-status change.
+- [x] Cancelled Orders are not treated as active or dispatched; a rejected decision cannot conflict with `Cancelled`, and all three status dimensions remain independently maintained.
+- [x] Specification-change/`On Hold` and cancellation-decision/`Cancelled` writes commit atomically through the centralized Repository while Status Management remains the sole status writer.
+- [x] Customer order responses omit internal cancellation decision notes and Raazia-only price history; role authorization remains centralized in Middleware.
 
-**Checks:** non-empty reason where the UI asks for one based on documented workflow; order price revision history; mutual agreement; On Hold behavior; cancellation approval; refund recording; status independence.
+**Checks:** non-empty reason where the UI asks for one based on documented workflow; order price revision history; mutual agreement; On Hold behavior; Raazia-initiated cancellation; rejected/`Cancelled` conflict; refund recording; status independence; customer/admin DTO separation; runtime grants/RLS source assertions. Audits and failure paths were added locally on 25 November 2026 in `backend/tests/orders.test.js`, `frontend/src/features/orders/OrderManagementPage.test.jsx`, and `frontend/src/features/orders/CustomerOrdersPage.test.jsx`.
 
 ### Cycle 5 integration gate
 

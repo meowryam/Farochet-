@@ -65,10 +65,13 @@ export function createApp({
     repository: dataRepository,
     productManagement: products,
   });
+  const statuses = dataRepository === repository
+    ? statusManagement
+    : createStatusManagement({ repository: dataRepository });
   const orders = orderManagementOverride ?? (
     dataRepository === repository
       ? orderManagement
-      : createOrderManagement({ repository: dataRepository })
+      : createOrderManagement({ repository: dataRepository, statusManagement: statuses })
   );
   const customizations = customizationManagementOverride
     ?? createCustomizationAndQuotationManagement({
@@ -82,9 +85,6 @@ export function createApp({
       ? availabilityManagement
       : createAvailabilityManagement({ repository: dataRepository })
   );
-  const statuses = dataRepository === repository
-    ? statusManagement
-    : createStatusManagement({ repository: dataRepository });
   const wishlist = wishlistManagementOverride ?? (
     dataRepository === repository
       ? wishlistManagement

@@ -271,6 +271,43 @@ export function updateAdminDelivery(id, delivery) {
   }).then((data) => data.order);
 }
 
+export function recordAdminSpecificationChange(id, notes) {
+  return request(`/admin/orders/${encodeURIComponent(id)}/specification-change`, {
+    method: "PATCH",
+    body: JSON.stringify({ notes }),
+  }).then((data) => data.order);
+}
+
+export function recordAdminOrderPriceRevision(id, revision) {
+  return request(`/admin/orders/${encodeURIComponent(id)}/price-revision`, {
+    method: "PATCH",
+    body: JSON.stringify(revision),
+  }).then((data) => data.order);
+}
+
+export function recordAdminCancellationDecision(id, decision) {
+  return request(`/admin/orders/${encodeURIComponent(id)}/cancellation-decision`, {
+    method: "PATCH",
+    body: JSON.stringify(decision),
+  }).then((data) => data.order);
+}
+
+export function recordAdminRefundOutcome(id, refundOutcome) {
+  return request(`/admin/orders/${encodeURIComponent(id)}/refund-outcome`, {
+    method: "PATCH",
+    body: JSON.stringify({ refundOutcome }),
+  }).then((data) => data.order);
+}
+
+export function requestCustomerOrderCancellation(id, reason, token = getCustomerAccessToken()) {
+  return request(`/orders/${encodeURIComponent(id)}/cancellation-request`, {
+    token,
+    clearTokenOnUnauthorized: clearCustomerAccessToken,
+    method: "POST",
+    body: JSON.stringify({ reason }),
+  }).then((data) => data.order);
+}
+
 export function submitCustomizationRequest(details) {
   return request("/customer/customization/requests", {
     method: "POST",

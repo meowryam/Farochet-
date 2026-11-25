@@ -152,6 +152,15 @@ model Order {
   deliveryFee                 Int?
   deliveryTrackingInformation String?
   estimatedCompletionDate     DateTime?
+  specificationChangeNotes    String?
+  specificationChangeRecordedAt DateTime?
+  specificationChangeResolvedAt DateTime?
+  cancellationRequestedAt     DateTime?
+  cancellationRequestReason   String?
+  cancellationApproved        Boolean?
+  cancellationDecisionAt      DateTime?
+  cancellationDecisionNotes   String?
+  refundOutcome               String?
   confirmedAt                 DateTime             @default(now())
   updatedAt                   DateTime             @updatedAt
   priceRevisions              OrderPriceRevision[]

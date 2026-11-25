@@ -369,15 +369,18 @@ async function decidePendingRequest({ requestId, decision, order = null }) {
   });
 }
 
+const orderReadInclude = {
+  inquiry: {
+    include: {
+      product: { select: { id: true, name: true } },
+    },
+  },
+  priceRevisions: { orderBy: [{ createdAt: "desc" }, { id: "asc" }] },
+};
+
 async function listOrders() {
   return getPrismaClient().order.findMany({
-    include: {
-      inquiry: {
-        include: {
-          product: { select: { id: true, name: true } },
-        },
-      },
-    },
+    include: orderReadInclude,
     orderBy: [{ confirmedAt: "desc" }, { id: "asc" }],
   });
 }
@@ -393,13 +396,7 @@ async function upsertOrder(id, data) {
 async function findOrderById(id) {
   return getPrismaClient().order.findUnique({
     where: { id },
-    include: {
-      inquiry: {
-        include: {
-          product: { select: { id: true, name: true } },
-        },
-      },
-    },
+    include: orderReadInclude,
   });
 }
 
@@ -441,6 +438,81 @@ async function updateOrderDelivery(id, data, priceRevision = null) {
       },
     });
     return updated;
+  });
+}
+
+async function updateOrderApprovedPrice(id, data, priceRevision) {
+  const prisma = getPrismaClient();
+  return prisma.$transaction(async (tx) => {
+    const updated = await tx.order.update({
+      where: { id },
+      data,
+    });
+    await tx.orderPriceRevision.create({
+      data: {
+        orderId: id,
+        originalPrice: priceRevision.originalPrice,
+        revisedPrice: priceRevision.revisedPrice,
+        actingUserId: priceRevision.actingUserId,
+        customerAgreed: priceRevision.customerAgreed,
+        reason: priceRevision.reason,
+      },
+    });
+    return updated;
+  });
+}
+
+async function recordOrderSpecificationChange(id, data) {
+  return getPrismaClient().order.update({
+    where: { id },
+    data,
+  });
+}
+
+async function updateOrderCancellationRequest(id, data) {
+  return getPrismaClient().order.update({
+    where: { id },
+    data,
+  });
+}
+
+async function recordCancellationDecision(id, data) {
+  return getPrismaClient().order.update({
+    where: { id },
+    data,
+  });
+}
+
+async function updateOrderRefundOutcome(id, data) {
+  return getPrismaClient().order.update({
+    where: { id },
+    data: { refundOutcome: data.refundOutcome },
+  });
+}
+
+/**
+ * Run related Order writes in one transaction. The callback receives a
+ * transaction-scoped Repository surface so Status Management can remain the
+ * sole status writer while its write commits atomically with the owning
+ * Business Logic component's record update.
+ */
+async function withOrderTransaction(callback) {
+  const prisma = getPrismaClient();
+  return prisma.$transaction(async (tx) => {
+    const txRepository = {
+      findOrderById: (id) => tx.order.findUnique({
+        where: { id },
+        include: orderReadInclude,
+      }),
+      updateOrderManufacturing: (id, data) => tx.order.update({ where: { id }, data }),
+      recordOrderSpecificationChange: (id, data) => tx.order.update({ where: { id }, data }),
+      recordCancellationDecision: (id, data) => tx.order.update({ where: { id }, data }),
+      updateOrderRefundOutcome: (id, data) => tx.order.update({
+        where: { id },
+        data: { refundOutcome: data.refundOutcome },
+      }),
+    };
+    return callback(txRepository);
   });
 }
 
@@ -898,6 +970,12 @@ const repository = {
   updateOrderManufacturing,
   updateOrderPaymentStatus,
   updateOrderDelivery,
+  updateOrderApprovedPrice,
+  recordOrderSpecificationChange,
+  updateOrderCancellationRequest,
+  recordCancellationDecision,
+  updateOrderRefundOutcome,
+  withOrderTransaction,
   addWishlistItem,
   listWishlistItems,
   removeWishlistItem,

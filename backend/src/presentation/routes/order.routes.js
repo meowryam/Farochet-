@@ -24,12 +24,17 @@ function createOrderRoutes({
   adminRouter.patch("/:id/status", controller.updateManufacturingProgress);
   adminRouter.patch("/:id/payment-status", controller.updatePaymentStatus);
   adminRouter.patch("/:id/delivery", controller.updateDelivery);
+  adminRouter.patch("/:id/specification-change", controller.recordSpecificationChange);
+  adminRouter.patch("/:id/price-revision", controller.recordPriceRevision);
+  adminRouter.patch("/:id/cancellation-decision", controller.decideCancellation);
+  adminRouter.patch("/:id/refund-outcome", controller.recordRefundOutcome);
 
   const customerRouter = Router();
   customerRouter.use(authenticateCustomer, requireRole("CUSTOMER"));
   customerRouter.get("/my", controller.list);
   customerRouter.get("/", controller.list);
   customerRouter.get("/:id", controller.get);
+  customerRouter.post("/:id/cancellation-request", controller.requestCancellation);
 
   return { adminRouter, customerRouter };
 }
