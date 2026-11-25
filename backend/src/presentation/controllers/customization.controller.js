@@ -20,6 +20,18 @@ const negotiationInputSchema = z.object({
 }).strict();
 const imagePathSchema = z.string().min(1);
 
+// strict() rejects client-supplied identity, status, or Order fields. The
+// approved price is the whole-PKR amount Raazia records for the Order; the
+// optional entry is a selection from this request's negotiation history.
+const acceptDecisionInputSchema = z.object({
+  approvedPrice: z.number().refine(
+    (value) => Number.isSafeInteger(value) && value > 0,
+    "Approved Price must be a positive whole amount in PKR.",
+  ),
+  negotiationEntryId: z.string().uuid().optional(),
+}).strict();
+const rejectDecisionInputSchema = z.object({}).strict();
+
 const referenceImageSchema = z.object({
   name: z.string().trim().min(1, "Image name is required."),
   contentType: z.enum(["image/jpeg", "image/png", "image/webp"]),
@@ -94,6 +106,26 @@ function parseNegotiationBody(req, res) {
   return parsed.data;
 }
 
+function parseAcceptDecisionBody(req, res) {
+  const parsed = acceptDecisionInputSchema.safeParse(req.body);
+  if (!parsed.success) {
+    const message = parsed.error.issues.map((issue) => issue.message).join(" ");
+    res.status(400).json({ error: { code: "VALIDATION_ERROR", message } });
+    return null;
+  }
+  return parsed.data;
+}
+
+function parseRejectDecisionBody(req, res) {
+  const parsed = rejectDecisionInputSchema.safeParse(req.body ?? {});
+  if (!parsed.success) {
+    const message = parsed.error.issues.map((issue) => issue.message).join(" ");
+    res.status(400).json({ error: { code: "VALIDATION_ERROR", message } });
+    return null;
+  }
+  return parsed.data;
+}
+
 function parseImagePath(req, res) {
   const parsed = imagePathSchema.safeParse(req.query.path);
   if (!parsed.success) {
@@ -147,6 +179,23 @@ function createCustomizationController(customizationManagement) {
       return res.status(201).json({ entry });
     },
 
+    acceptRequest: async (req, res) => {
+      const id = parseCustomizationId(req, res);
+      if (!id) return;
+      const input = parseAcceptDecisionBody(req, res);
+      if (!input) return;
+      const result = await customizationManagement.acceptRequest(req.authenticatedUser, id, input);
+      return res.status(201).json(result);
+    },
+
+    rejectRequest: async (req, res) => {
+      const id = parseCustomizationId(req, res);
+      if (!id) return;
+      if (!parseRejectDecisionBody(req, res)) return;
+      const result = await customizationManagement.rejectRequest(req.authenticatedUser, id);
+      return res.json(result);
+    },
+
     getImage: async (req, res) => {
       const imagePath = parseImagePath(req, res);
       if (!imagePath) return;
@@ -164,6 +213,8 @@ export {
   customizationInputSchema,
   referenceImageSchema,
   negotiationInputSchema,
+  acceptDecisionInputSchema,
+  rejectDecisionInputSchema,
   customizationIdSchema,
   imagePathSchema,
 };

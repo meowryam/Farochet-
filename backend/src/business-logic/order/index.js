@@ -43,12 +43,30 @@ function createOrderManagement({ repository }) {
   }
 
   return {
-    createConfirmedOrder: async () => {
-      throw orderError(
-        "Confirmed Orders can only be created through the later accepted-request handoff.",
-        409,
-        "ORDER_CREATION_NOT_AVAILABLE",
-      );
+    createConfirmedOrder: async ({
+      requestId,
+      decision,
+      inquiryId,
+      approvedPrice,
+      negotiatedPriceSnapshot,
+    }) => {
+      // Status Management has no order-status initializer in the current
+      // code, so no initializer is invented here. The three values below are
+      // the existing schema defaults; this choice is reported as a pending
+      // STOP AND ASK item for team confirmation (ADR-005 Decision 3).
+      const result = await repository.decidePendingRequest({
+        requestId,
+        decision,
+        order: {
+          inquiryId,
+          approvedPrice,
+          negotiatedPriceSnapshot: negotiatedPriceSnapshot ?? null,
+          manufacturingStatus: "Incomplete",
+          paymentStatus: null,
+          deliveryStatus: null,
+        },
+      });
+      return toOrderView(result.order);
     },
 
     listOrdersForViewer: async (viewer) => {

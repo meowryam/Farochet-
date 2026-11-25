@@ -349,7 +349,7 @@ _Add new slice entries below._
 - **Related PRD requirements:** FR-12, FR-13; plan.md Section 12 (Cycle 4, Member 3); ADR-002, ADR-005.
 - **Owner:** Member 3 (Wareesha Fatima, 25I-3009).
 - **Plan version:** Not supplied in this task.
-- **Branch / Pull Request / merge:** Direct to main (no branches); commit pending — the student will fill in the hash.
+- **Branch / Pull Request / merge:** Direct to main (no branches); commit 229a937 (pushed to main).
 - **HITL / AFK mode:** AFK build by an OpenCode agent in four parts (A schema, B backend, C tests, D frontend), with a short summary after each part. The agent did not run tests; the student ran them.
 - **Reason for mode:** Not supplied in this task.
 - **AI chat/task reference:** OpenCode agent, read-limited prompt — Cycle 4 Member 3, Quotation & Price Negotiation (FR-12, FR-13).
@@ -366,8 +366,34 @@ _Add new slice entries below._
 - **Decision:** Accept / Revise / Reject
 - **Decision reason:** Not supplied in this task.
 - **Major issue/change:** Added the append-only `NegotiationEntry` model and negotiation flow. The agent ran no migration, `prisma generate`, dependency install, or test run; the coordinator migration remains outstanding.
-- **Integration status:** Implemented locally in the working tree; commit pending. Branch / Pull Request / merge: Direct to main (no branches); commit hash to be filled by the student.
+- **Integration status:** Implemented locally in the working tree and pushed to main; commit 229a937 (pushed to main). Branch / Pull Request / merge: Direct to main (no branches).
 - **Evidence link(s):** `docs/evidence/Testing_Evidence_Log.md`; `backend/tests/negotiation.test.js`.
+
+### C5-M3 — Request Acceptance & Rejection / Order Handoff
+
+- **Related PRD requirements:** FR-10, FR-11, FR-12; plan.md Section 13 (Cycle 5, Member 3); ADR-002, ADR-004, ADR-005.
+- **Owner:** Member 3 (Wareesha Fatima, 25I-3009).
+- **Plan version:** 2.7 (23 November 2026) as recorded in the active `plan.md`; not updated by this task.
+- **Branch / Pull Request / merge:** Direct to main (no branches); commit pending.
+- **HITL / AFK mode:** AFK build by an OpenCode agent in five parts (A schema confirmation, B backend, C tests, D frontend, E evidence), with a short summary after each part. The agent did not run tests; the student ran them.
+- **Reason for mode:** Not supplied in this task.
+- **AI chat/task reference:** OpenCode agent, read-limited prompt — Cycle 5 Member 3, Request Acceptance & Rejection / Order Handoff (FR-10, FR-11, FR-12).
+- **Context supplied to agent:** Read-limited prompt naming plan.md Section 13, PRD FR-10/FR-11/business rules 4–6, ADR-002/004/005, specified architecture and repository sections, current implementation files, and explicit Cycle 5 decisions. No migration, `prisma generate`, dependency install, `.env` read, test run, or commit was performed by the agent.
+- **Acceptance criteria:** Not restated in this task; see plan.md Section 13 (Cycle 5, Member 3).
+- **Important iterations/corrections:** Built in five ordered parts with one short summary after each part. No schema file was edited; the generated Prisma Client and migrations were left to the coordinator. One test initially failed: it expected the code VALIDATION_ERROR, but the code returns HTTP 400 INVALID_NEGOTIATION_ENTRY when the chosen negotiation entry belongs to another Customization. The test was corrected and the more specific code was kept. INVALID_NEGOTIATION_ENTRY is a Member 3 default, pending team confirmation.
+- **Rejected/revised approach (if any):** No new schema fields, status values beyond the two decided constants, Order-to-request relationship, decided-request list, payment/delivery logic, or automatic Raazia decision was introduced.
+- **Files changed (12):** `backend/src/data-access/repositories/index.ts`; `backend/src/business-logic/order/index.js`; `backend/src/business-logic/customization/index.js`; `backend/src/presentation/controllers/customization.controller.js`; `backend/src/presentation/routes/customization.routes.js`; `backend/src/app.js`; `backend/tests/request-decision.test.js`; `frontend/src/services/api.js`; `frontend/src/features/customization/CustomizationReviewPage.jsx`; `docs/evidence/Testing_Evidence_Log.md`; `docs/evidence/Workflow_Evidence_Log.md`; `docs/evidence/Group_Contribution_Log.md`.
+- **Team-defined defaults, pending team confirmation (not PRD rules):** (1) `PendingOrderRequest.status` values `"ACCEPTED"` and `"REJECTED"` are not defined in the PRD, ADRs or schema; (2) the selected negotiation entry (or none) becomes `negotiatedPriceSnapshot`; (3) Raazia enters `approvedPrice` including any delivery fee while `deliveryMethod` and `deliveryFee` stay null until Delivery Management records them; (4) rejected requests disappear from the PENDING-only list and no decided-requests list was added; (5) the runtime role needs INSERT on `Order` and UPDATE on `PendingOrderRequest`, with matching RLS, in a coordinator migration; (6) Status Management has no initializer, so the three initial status values are set directly as the existing schema defaults.
+- **Open items, Pending:** All six STOP AND ASK items above require team confirmation; the coordinator migration for runtime Order INSERT and PendingOrderRequest UPDATE grants/RLS is needed before live use; human acceptance is not yet recorded.
+- **Tests/checks actually run:** Agent ran none. Student-run: 14 backend test files / 177 tests passed (21 in backend/tests/request-decision.test.js); frontend build OK (113 modules).
+- **Actual results:** 14 backend test files / 177 tests passed (21 in backend/tests/request-decision.test.js); frontend build OK (113 modules).
+- **Not tested:** Live database persistence, RLS and browser workflow remain unverified; automated checks were student-run and are recorded above.
+- **Human checks by Wareesha:** Checked by Wareesha with a PowerShell check script and a code review in an AI chat: exactly 12 files changed; no change to schema.prisma, migrations, .env or package files; only two POST routes (accept and reject), no PUT, PATCH or DELETE; the stub error ORDER_CREATION_NOT_AVAILABLE is removed; the Raazia-only check is enforced in the business logic and not only in the route; the accept and reject step is one repository transaction that updates only a PENDING request.
+- **Decision:** Accept / Revise / Reject
+- **Decision reason:** Not supplied in this task.
+- **Major issue/change:** Added Raazia-only accept/reject APIs, an atomic conditional `PENDING` transition with one confirmed Order, a direct Order-to-Inquiry reference, price/snapshot handoff, and the admin Decision UI. No schema change or new dependency was introduced.
+- **Integration status:** Implemented locally in the working tree; not committed or pushed. Branch / Pull Request / merge: Direct to main (no branches); commit pending.
+- **Evidence link(s):** `docs/evidence/Testing_Evidence_Log.md`; `docs/evidence/Group_Contribution_Log.md`; `backend/tests/request-decision.test.js`.
 
 ### C3-M4 — Payment Management
 

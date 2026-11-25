@@ -1,6 +1,13 @@
 import repository from "../../data-access/repositories/index.ts";
 import { createInMemoryImageStorage } from "../../data-access/storage/inMemoryImageStorage.js";
 
+// PendingOrderRequest.status is a plain String. These are the only new
+// decision values introduced by Cycle 5; they are not PRD status terms.
+const REQUEST_DECISION_STATUSES = Object.freeze({
+  ACCEPTED: "ACCEPTED",
+  REJECTED: "REJECTED",
+});
+
 function customizationError(message, status, code) {
   const error = new Error(message);
   error.status = status;
@@ -12,6 +19,7 @@ function createCustomizationAndQuotationManagement({
   repository: dataRepository,
   productManagement,
   imageStorage = createInMemoryImageStorage(),
+  orderManagement,
 } = {}) {
   if (!dataRepository) {
     throw new Error("Customization and Quotation Management requires the centralized Repository.");
@@ -51,6 +59,24 @@ function createCustomizationAndQuotationManagement({
       404,
       "CUSTOMIZATION_IMAGE_NOT_FOUND",
     );
+  }
+
+  function requestNotPending() {
+    return customizationError(
+      "Request is not pending.",
+      409,
+      "REQUEST_NOT_PENDING",
+    );
+  }
+
+  function requireOrderManagement() {
+    if (!orderManagement || typeof orderManagement.createConfirmedOrder !== "function") {
+      throw customizationError(
+        "Order Management is not available for the accepted-request handoff.",
+        503,
+        "ORDER_MANAGEMENT_NOT_AVAILABLE",
+      );
+    }
   }
 
   // Shared by request review and negotiation so both apply the same
@@ -180,6 +206,62 @@ function createCustomizationAndQuotationManagement({
         proposedPrice: input.proposedPrice,
         note: input.note ?? null,
       });
+    },
+
+    // FR-10/FR-11: only Raazia records the decision. On acceptance this
+    // component provides the accepted request details to Order Management;
+    // the conditional status change and Order insert are one repository
+    // transaction so a repeated click/retry cannot create a second Order.
+    acceptRequest: async (viewer, id, input) => {
+      requireRaazia(viewer);
+      const request = await readRequestForViewer(viewer, id);
+      if (request.status !== "PENDING") throw requestNotPending();
+
+      let negotiatedPriceSnapshot = null;
+      if (input.negotiationEntryId !== undefined && input.negotiationEntryId !== null) {
+        const entries = await dataRepository.listNegotiationEntries(request.customization.id);
+        const selected = entries.find((entry) => entry.id === input.negotiationEntryId);
+        if (!selected) {
+          throw customizationError(
+            "The selected negotiation entry does not belong to this request.",
+            400,
+            "INVALID_NEGOTIATION_ENTRY",
+          );
+        }
+        negotiatedPriceSnapshot = selected.proposedPrice;
+      }
+
+      requireOrderManagement();
+      const order = await orderManagement.createConfirmedOrder({
+        requestId: id,
+        decision: REQUEST_DECISION_STATUSES.ACCEPTED,
+        // The original Inquiry comes from persisted request data, never from
+        // the request body.
+        inquiryId: request.customization?.inquiryId ?? request.inquiry?.id,
+        approvedPrice: input.approvedPrice,
+        negotiatedPriceSnapshot,
+      });
+
+      return {
+        requestId: id,
+        status: REQUEST_DECISION_STATUSES.ACCEPTED,
+        order,
+      };
+    },
+
+    rejectRequest: async (viewer, id) => {
+      requireRaazia(viewer);
+      const request = await readRequestForViewer(viewer, id);
+      if (request.status !== "PENDING") throw requestNotPending();
+
+      const result = await dataRepository.decidePendingRequest({
+        requestId: id,
+        decision: REQUEST_DECISION_STATUSES.REJECTED,
+      });
+      return {
+        requestId: result.request.id,
+        status: result.request.status,
+      };
     },
 
     getReferenceImageForViewer: async (viewer, imagePath) => {

@@ -65,17 +65,18 @@ export function createApp({
     repository: dataRepository,
     productManagement: products,
   });
-  const customizations = customizationManagementOverride
-    ?? createCustomizationAndQuotationManagement({
-      repository: dataRepository,
-      productManagement: products,
-      imageStorage,
-    });
   const orders = orderManagementOverride ?? (
     dataRepository === repository
       ? orderManagement
       : createOrderManagement({ repository: dataRepository })
   );
+  const customizations = customizationManagementOverride
+    ?? createCustomizationAndQuotationManagement({
+      repository: dataRepository,
+      productManagement: products,
+      imageStorage,
+      orderManagement: orders,
+    });
   const availability = availabilityManagementOverride ?? (
     dataRepository === repository
       ? availabilityManagement

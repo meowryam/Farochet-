@@ -40,6 +40,8 @@ function createAdminCustomizationRoutes({
   router.get("/requests/:id", controller.get);
   router.get("/requests/:id/negotiation", controller.getNegotiation);
   router.post("/requests/:id/negotiation", controller.addNegotiationEntry);
+  router.post("/requests/:id/accept", controller.acceptRequest);
+  router.post("/requests/:id/reject", controller.rejectRequest);
   router.get("/images", controller.getImage);
 
   return router;

@@ -304,6 +304,20 @@ export function addAdminNegotiationEntry(id, offer) {
   }).then((data) => data.entry);
 }
 
+export function acceptAdminCustomizationRequest(id, decision) {
+  return request(`/admin/customization/requests/${encodeURIComponent(id)}/accept`, {
+    method: "POST",
+    body: JSON.stringify(decision),
+  });
+}
+
+export function rejectAdminCustomizationRequest(id) {
+  return request(`/admin/customization/requests/${encodeURIComponent(id)}/reject`, {
+    method: "POST",
+    body: JSON.stringify({}),
+  });
+}
+
 export function getMyNegotiation(id, token = getCustomerAccessToken()) {
   return request(`/customer/customization/requests/${encodeURIComponent(id)}/negotiation`, {
     token,

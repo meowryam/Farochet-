@@ -308,6 +308,67 @@ async function listNegotiationEntries(customizationId) {
   return entries.map(mapNegotiationEntry);
 }
 
+function assertRequestDecisionSchema(prisma) {
+  // The generated Prisma Client is refreshed by the coordinator after the
+  // Cycle 5 permissions migration. Fail clearly until then.
+  if (!prisma.pendingOrderRequest || !prisma.order) {
+    const error = new Error(
+      "Request decision storage is not available in the generated Prisma Client.",
+    );
+    error.status = 503;
+    error.code = "REQUEST_DECISION_SCHEMA_NOT_AVAILABLE";
+    throw error;
+  }
+}
+
+const decisionOrderInclude = {
+  inquiry: {
+    include: {
+      product: { select: { id: true, name: true } },
+    },
+  },
+};
+
+async function decidePendingRequest({ requestId, decision, order = null }) {
+  const prisma = getPrismaClient();
+  assertRequestDecisionSchema(prisma);
+
+  // Idempotency: the PENDING -> decision change and the Order insert happen
+  // in one transaction. A repeated click/retry sees the new status, the
+  // conditional update count is 0, the transaction rolls back, and no
+  // second Order is created. No new relationship or field is introduced.
+  return prisma.$transaction(async (transaction) => {
+    const transition = await transaction.pendingOrderRequest.updateMany({
+      where: { id: requestId, status: "PENDING" },
+      data: { status: decision },
+    });
+    if (transition.count !== 1) {
+      const error = new Error("Request is not pending.");
+      error.status = 409;
+      error.code = "REQUEST_NOT_PENDING";
+      throw error;
+    }
+
+    if (!order) {
+      return { request: { id: requestId, status: decision }, order: null };
+    }
+
+    const createdOrder = await transaction.order.create({
+      data: {
+        inquiryId: order.inquiryId,
+        approvedPrice: order.approvedPrice,
+        negotiatedPriceSnapshot: order.negotiatedPriceSnapshot ?? null,
+        manufacturingStatus: order.manufacturingStatus,
+        paymentStatus: order.paymentStatus ?? null,
+        deliveryStatus: order.deliveryStatus ?? null,
+      },
+      include: decisionOrderInclude,
+    });
+
+    return { request: { id: requestId, status: decision }, order: createdOrder };
+  });
+}
+
 async function listOrders() {
   return getPrismaClient().order.findMany({
     include: {
@@ -829,6 +890,7 @@ const repository = {
   findCustomizationByReferenceImage,
   createNegotiationEntry,
   listNegotiationEntries,
+  decidePendingRequest,
   listOrders,
   listOrdersForDateRange,
   upsertOrder,

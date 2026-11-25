@@ -8,11 +8,13 @@ import Card from "../../components/ui/Card";
 import EmptyState from "../../components/ui/EmptyState";
 import { useAuth } from "../../contexts/AuthContext";
 import {
+  acceptAdminCustomizationRequest,
   addAdminNegotiationEntry,
   getAdminCustomizationImage,
   getAdminCustomizationRequest,
   getAdminNegotiation,
   listAdminCustomizationRequests,
+  rejectAdminCustomizationRequest,
 } from "../../services/api";
 import NegotiationPanel from "./NegotiationPanel";
 
@@ -45,6 +47,11 @@ export default function CustomizationReviewPage() {
   const [isNegotiationLoading, setIsNegotiationLoading] = useState(false);
   const [isSubmittingOffer, setIsSubmittingOffer] = useState(false);
   const [negotiationError, setNegotiationError] = useState("");
+  const [isDeciding, setIsDeciding] = useState(false);
+  const [decisionError, setDecisionError] = useState("");
+  const [decisionResult, setDecisionResult] = useState(null);
+  const [approvedPrice, setApprovedPrice] = useState("");
+  const [selectedEntryId, setSelectedEntryId] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isDetailLoading, setIsDetailLoading] = useState(false);
   const [error, setError] = useState("");
@@ -80,6 +87,10 @@ export default function CustomizationReviewPage() {
     setIsNegotiationLoading(true);
     setError("");
     setNegotiationError("");
+    setDecisionError("");
+    setDecisionResult(null);
+    setApprovedPrice("");
+    setSelectedEntryId("");
     setSelectedRequest(null);
     setNegotiation(null);
     setImages({});
@@ -111,6 +122,51 @@ export default function CustomizationReviewPage() {
       setNegotiation(await getAdminNegotiation(selectedRequest.id));
     } finally {
       setIsSubmittingOffer(false);
+    }
+  }
+
+  async function acceptRequest(event) {
+    event.preventDefault();
+    setDecisionError("");
+
+    const parsedPrice = Number(approvedPrice);
+    if (approvedPrice === "" || !Number.isSafeInteger(parsedPrice) || parsedPrice <= 0) {
+      setDecisionError("Enter a positive whole amount in PKR.");
+      return;
+    }
+
+    setIsDeciding(true);
+    try {
+      const result = await acceptAdminCustomizationRequest(selectedRequest.id, {
+        approvedPrice: parsedPrice,
+        ...(selectedEntryId === "" ? {} : { negotiationEntryId: selectedEntryId }),
+      });
+      setDecisionResult(result);
+      setSelectedRequest((current) => (current ? { ...current, status: result.status } : current));
+      setApprovedPrice("");
+      setSelectedEntryId("");
+      void loadRequests();
+    } catch (decisionFailure) {
+      setDecisionError(decisionFailure instanceof Error ? decisionFailure.message : "Could not record acceptance.");
+    } finally {
+      setIsDeciding(false);
+    }
+  }
+
+  async function rejectRequest() {
+    if (!window.confirm("Record rejection for this request? The request will be retained.")) return;
+
+    setIsDeciding(true);
+    setDecisionError("");
+    try {
+      const result = await rejectAdminCustomizationRequest(selectedRequest.id);
+      setDecisionResult(result);
+      setSelectedRequest((current) => (current ? { ...current, status: result.status } : current));
+      void loadRequests();
+    } catch (decisionFailure) {
+      setDecisionError(decisionFailure instanceof Error ? decisionFailure.message : "Could not record rejection.");
+    } finally {
+      setIsDeciding(false);
     }
   }
 
@@ -274,6 +330,74 @@ export default function CustomizationReviewPage() {
                       admin
                       idPrefix="admin-negotiation"
                     />
+                  )}
+                </div>
+                <div className="catalogue-form-wide">
+                  {selectedRequest.status === "PENDING" ? (
+                    <Card title="Decision" description="Recorded manually by Raazia for this pending request.">
+                      {decisionError && (
+                        <Alert tone="error" title="Decision not recorded">{decisionError}</Alert>
+                      )}
+                      <form onSubmit={acceptRequest}>
+                        <div className="catalogue-info-fields">
+                          <div>
+                            <label htmlFor="request-decision-price">Approved Price (whole PKR)</label>
+                            <input
+                              id="request-decision-price"
+                              name="approvedPrice"
+                              type="number"
+                              min="1"
+                              step="1"
+                              required
+                              value={approvedPrice}
+                              onChange={(event) => setApprovedPrice(event.target.value)}
+                            />
+                          </div>
+                          <div>
+                            <label htmlFor="request-decision-entry">Recorded offer for Negotiated Price (optional)</label>
+                            <select
+                              id="request-decision-entry"
+                              name="negotiationEntryId"
+                              value={selectedEntryId}
+                              onChange={(event) => setSelectedEntryId(event.target.value)}
+                            >
+                              <option value="">No offer selected</option>
+                              {(negotiation?.entries ?? []).map((entry) => (
+                                <option key={entry.id} value={entry.id}>
+                                  {`${entry.proposer === "RAAZIA" ? "Raazia" : "Customer"} · PKR ${entry.proposedPrice} · ${formatDate(entry.createdAt)}`}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
+                        <div className="catalogue-row-actions">
+                          <Button type="submit" admin loading={isDeciding}>Accept request</Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            admin
+                            onClick={() => { void rejectRequest(); }}
+                          >
+                            Reject request
+                          </Button>
+                        </div>
+                      </form>
+                    </Card>
+                  ) : (
+                    <Card title="Decision" description="Recorded for this request.">
+                      <div className="catalogue-info-fields">
+                        <div>
+                          <strong>Stored status</strong>
+                          <p>{display(selectedRequest.status)}</p>
+                        </div>
+                        {decisionResult?.order?.id ? (
+                          <div>
+                            <strong>Confirmed Order</strong>
+                            <p>{display(decisionResult.order.id)}</p>
+                          </div>
+                        ) : null}
+                      </div>
+                    </Card>
                   )}
                 </div>
               </div>
